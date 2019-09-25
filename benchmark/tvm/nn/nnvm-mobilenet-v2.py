@@ -1,12 +1,24 @@
-import tvm  
-import nnvm 
-from nnvm import symbol as sym 
+from __future__ import absolute_import as _abs
+import tvm
+import nnvm
+from nnvm import symbol as sym
+import nnvm.testing.init as init
+from tvm.contrib import graph_runtime
+import numpy as np
 
 """
-This implementation of MobileNet V2 is modified 
+This implementation of MobileNet V2 is inspired
 from https://github.com/tonylins/pytorch-mobilenet-v2
+
+last modify: 2019-09-21
+author: size zheng
 """
 
+"""
+This is a mobilenet-v2 benchmark implemented in NNVM
+Notice that this implementation uses no optimization
+so the performance should be poor.
+"""
 
 def generate_parameters(obj):
     if hasattr(obj, "__dict__"):
@@ -51,8 +63,8 @@ def compose(f, *args):
     return compose(lambda *a: args[0](f(*a)), *args[1:])
 
 
-def identity(*args):
-    return args
+def identity(inputs):
+    return inputs
 
 
 class Sequential(Layer):
@@ -97,8 +109,11 @@ class Conv2d(Layer):
         self._dilation = dilation 
         self._group = group 
         self._use_bias = use_bias 
-
-        self.weight = sym.Variable("%s_weight" % name, shape=[out_channel, in_channel, *kernel_size])
+        
+        if group == in_channel:
+            self.weight = sym.Variable("%s_weight" % name, shape=[in_channel, out_channel // in_channel, *kernel_size])
+        else:
+            self.weight = sym.Variable("%s_weight" % name, shape=[out_channel, in_channel//group, *kernel_size])
         if use_bias:
             self.bias = sym.Variable("%s_bias" % name, shape=[out_channel])
 
@@ -183,7 +198,7 @@ class InvertedResidual(Layer):
         if expand_ratio == 1:
             self.conv = Sequential(
                 # depthwise
-                Conv2d("%s_depthwise_1" % name, in_channel, hidden_dim, 3, strides=strides, padding=1, group=hidden_dim),
+                Conv2d("%s_depthwise_1" % name, in_channel, hidden_dim, 3, strides=strides, padding=1, group=in_channel),
                 BatchNorm(),
                 ReLU(),
                 # pointwise
@@ -213,7 +228,7 @@ class InvertedResidual(Layer):
 
 
 class MobileNetV2(Layer):
-    def __init__(self, name, n_class=1000, input_size=224, width_mult=1):
+    def __init__(self, name, n_class=1000, input_size=224, width_mult=1.0):
         super(MobileNetV2, self).__init__()
         block = InvertedResidual
         input_channel = 32
@@ -221,12 +236,12 @@ class MobileNetV2(Layer):
         interverted_residual_setting = [
             # expand_ratio, c, n, stride
             [1, 16, 1, 1],
-            # [6, 24, 2, 2],
-            # [6, 32, 3, 2],
-            # [6, 64, 4, 2],
-            # [6, 96, 3, 1],
-            # [6, 160, 3, 2],
-            # [6, 320, 1, 1]
+            [6, 24, 2, 2],
+            [6, 32, 3, 2],
+            [6, 64, 4, 2],
+            [6, 96, 3, 1],
+            [6, 160, 3, 2],
+            [6, 320, 1, 1]
         ]
 
         assert input_size % 32 == 0
@@ -234,14 +249,14 @@ class MobileNetV2(Layer):
         self.last_channel = int(last_channel * width_mult) if width_mult > 1.0 else last_channel
         self.features = [conv_3x3_bn("%s_first_conv3x3_bn" % name, 3, input_channel, 2)]
 
-        for t, c, n, s in interverted_residual_setting:
+        for count, (t, c, n, s) in enumerate(interverted_residual_setting):
             output_channel = int(c * width_mult)
             for i in range(n):
                 if i == 0:
-                    self.features.append(block("%s_residual_%d" % (name, i+1), 
+                    self.features.append(block("%s_residual_%d_%d" % (name, count+1, i+1), 
                                     input_channel, output_channel, s, expand_ratio=t))
                 else:
-                    self.features.append(block("%s_residual_%d" % (name, i+1), 
+                    self.features.append(block("%s_residual_%d_%d" % (name, count+1, i+1), 
                                     input_channel, output_channel, 1, expand_ratio=t))
                 input_channel = output_channel
                 
@@ -260,14 +275,38 @@ class MobileNetV2(Layer):
         return y 
 
 
+def generate_random_parameters(compute_graph, input_name, input_shape, with_input=False, 
+                            context=tvm.cpu(0), seed=0, dtype="float32"):
+    input_shapes, _ = nnvm.compiler.graph_util.infer_shape(compute_graph, data=input_shape)
+    params = {}
+    shape_dict = dict(zip(compute_graph.index.input_names, input_shapes))
+    np.random.seed(seed)
+    for name, shape in shape_dict.items():
+        if name == input_name and not with_input:
+            continue
+        else:
+            init_value = np.random.uniform(-1, 1, shape).astype(dtype)
+            params[name] = tvm.nd.array(init_value, ctx=context)
+    return params
+
+
 if __name__ == "__main__":
     net = MobileNetV2("mobilenet-v2")
-    
-    inputs = sym.Variable("inputs", shape=[111, 3, 224, 224])
+    data_shape = (1, 3, 224, 224)
+
+    inputs = sym.Variable("data", shape=data_shape)
     output = net(inputs)
-
+    
     compute_graph = nnvm.graph.create(output)
-    print(compute_graph.ir())
-
-    deploy_graph, lib, params = nnvm.compiler.build(compute_graph, target="cuda")
+    ctx = tvm.context("cuda", 0)
+    params = generate_random_parameters(compute_graph, "data", data_shape, with_input=True, context=ctx)
+    deploy_graph, lib, params = nnvm.compiler.build(compute_graph, target="cuda", 
+                                        shape={"data": data_shape}, params=params)
     print(deploy_graph.ir())
+    module = graph_runtime.create(deploy_graph, lib, ctx)
+    
+    time_evaluator = module.module.time_evaluator("run", ctx, number=20, repeat=10)
+
+    time_cost = time_evaluator().mean * 1e3
+
+    print("time_cost=", time_cost, "ms")
