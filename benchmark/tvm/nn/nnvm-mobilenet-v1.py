@@ -131,10 +131,14 @@ if __name__ == "__main__":
     params = generate_random_parameters(compute_graph, "data", data_shape, with_input=True, context=ctx)
     deploy_graph, lib, params = nnvm.compiler.build(compute_graph, target="cuda", 
                                         shape={"data": data_shape}, params=params)
-    print(deploy_graph.ir())
+    # print(deploy_graph.ir())
     module = graph_runtime.create(deploy_graph, lib, ctx)
+
+    module.run()
+    output = module.get_output(0, None)
+    print(output.asnumpy())
     
-    time_evaluator = module.module.time_evaluator("run", ctx, number=20, repeat=10)
+    time_evaluator = module.module.time_evaluator("run", ctx, number=30, repeat=10)
 
     time_cost = time_evaluator().mean * 1e3
 

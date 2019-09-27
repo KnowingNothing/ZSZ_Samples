@@ -1,3 +1,13 @@
+"""
+MobileNet-v1 implemented in tensorflow
+author: size zheng 
+
+Notice: 
+1. Slim forces using bias for conv2d and fully_connected
+2. There is currently no way to get accurate gpu time
+    so we use timeline, which may bring unexpected overheads
+3. The only supported layout is NHWC
+"""
 from __future__ import absolute_import
 
 import os 
@@ -18,7 +28,7 @@ def depthwise_seperable_block(name, inputs, pointwise_channel, downsample=False)
     return bn
 
 
-def mobilenet(name, inputs, num_class=2, width_mult=1.0, train=False):
+def mobilenet(name, inputs, num_class=1000, width_mult=1.0, train=False):
     block = depthwise_seperable_block
     with tf.variable_scope(name):
         with slim.arg_scope([slim.convolution2d, slim.separable_convolution2d], activation_fn=None, 
@@ -67,10 +77,10 @@ if __name__ == "__main__":
         #                 feed_dict={inputs: np.random.uniform(1e9, 1e10, data_shape).astype(np.float32)})
 
         # record
-        for i in range(2):
+        for i in range(4):
             run_metadata = tf.RunMetadata()
             output = sess.run(preds, options=options, 
-                            feed_dict={inputs: np.random.uniform(1e9, 1e10, data_shape).astype(np.float32)}, 
+                            feed_dict={inputs: np.random.uniform(-1, 1, data_shape).astype(np.float32)}, 
                             run_metadata=run_metadata)
             print(output)
             fetched_timeline = timeline.Timeline(run_metadata.step_stats)
