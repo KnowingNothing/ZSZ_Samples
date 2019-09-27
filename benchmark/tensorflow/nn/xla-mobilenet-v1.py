@@ -15,7 +15,9 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 import tensorflow as tf 
 import tensorflow.contrib.slim as slim 
 import numpy as np
+import functools
 from tensorflow.python.client import timeline
+from tensorflow.contrib.compiler import xla 
 
 
 def depthwise_seperable_block(name, inputs, pointwise_channel, downsample=False):
@@ -63,11 +65,13 @@ if __name__ == "__main__":
     data_shape = (batch_size, 224, 224, 3)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+    inputs = tf.placeholder(name="input", dtype=tf.float32, shape=data_shape)
+    # preds = mobilenet("mobilenet", inputs)
+    create_net = functools.partial(mobilenet, "mobilenet")
+    [preds] = xla.compile(create_net, inputs=[inputs])
 
     with tf.Session(config=config) as sess:
         # writer = tf.summary.FileWriter("graph", sess.graph)
-        inputs = tf.placeholder(name="input", dtype=tf.float32, shape=data_shape)
-        preds = mobilenet("mobilenet", inputs)
         
         options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
         sess.run(tf.global_variables_initializer())
