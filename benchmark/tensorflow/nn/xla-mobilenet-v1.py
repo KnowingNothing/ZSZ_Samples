@@ -12,6 +12,7 @@ from __future__ import absolute_import
 
 import os 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import time
 import tensorflow as tf 
 import tensorflow.contrib.slim as slim 
 import numpy as np
@@ -61,34 +62,37 @@ def mobilenet(name, inputs, num_class=1000, width_mult=1.0, train=False):
 
 
 if __name__ == "__main__":
-    batch_size = 1
+    batch_size = 128
     data_shape = (batch_size, 224, 224, 3)
     config = tf.ConfigProto()
     config.gpu_options.allow_growth = True
+    trials = 400
     inputs = tf.placeholder(name="input", dtype=tf.float32, shape=data_shape)
     # preds = mobilenet("mobilenet", inputs)
     create_net = functools.partial(mobilenet, "mobilenet")
     [preds] = xla.compile(create_net, inputs=[inputs])
+    inputs_np = np.random.uniform(1e9, 1e10, data_shape).astype(np.float32)
 
     with tf.Session(config=config) as sess:
         # writer = tf.summary.FileWriter("graph", sess.graph)
         
-        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        # options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
         sess.run(tf.global_variables_initializer())
 
         # # warm up, no record
-        # output = sess.run(preds, options=options, 
-        #                 feed_dict={inputs: np.random.uniform(1e9, 1e10, data_shape).astype(np.float32)})
+        output = sess.run(preds, feed_dict={inputs: inputs_np})
 
         # record
-        for i in range(4):
-            run_metadata = tf.RunMetadata()
-            output = sess.run(preds, options=options, 
-                            feed_dict={inputs: np.random.uniform(-1, 1, data_shape).astype(np.float32)}, 
-                            run_metadata=run_metadata)
-            print(output)
-            fetched_timeline = timeline.Timeline(run_metadata.step_stats)
-            chrome_trace = fetched_timeline.generate_chrome_trace_format()
-            with open("mobilenet-v1-timeline_%d.json" % (i+1), "w") as fout:
-                fout.write(chrome_trace)
+        beg = time.time()
+        for i in range(trials):
+            # run_metadata = tf.RunMetadata()
+            output = sess.run(preds, feed_dict={inputs: inputs_np})
+            # print(output)
+            # fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+            # chrome_trace = fetched_timeline.generate_chrome_trace_format()
+            # with open("mobilenet-v1-timeline_%d.json" % (i+1), "w") as fout:
+            #    fout.write(chrome_trace)
+        end = time.time()
+        print("end-to-end time cost=", (end - beg) * 1e3 / trials, "ms")
+        
             

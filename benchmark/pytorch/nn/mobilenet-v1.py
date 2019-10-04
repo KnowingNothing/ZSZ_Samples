@@ -6,6 +6,7 @@ from __future__ import absolute_import
 
 import os 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
+import time
 import torch 
 import torch.nn as nn 
 
@@ -71,8 +72,8 @@ class MobileNetV1(nn.Module):
 if __name__ == "__main__":
     net = MobileNetV1()
     device = torch.device("cuda", 0)
-    batch_size = 1
-    trials = 20
+    batch_size = 128
+    trials = 400
     net.to(device)
     data_shape = (batch_size, 3, 224, 224)
     for p in net.parameters():
@@ -81,19 +82,21 @@ if __name__ == "__main__":
         else:
             nn.init.xavier_uniform_(p)
 
-    inputs = torch.rand(size=data_shape, dtype=torch.float32).to(device)
+    inputs = torch.rand(size=data_shape, dtype=torch.float32)
     # warm up
-    output = net(inputs)
+    output = net(inputs.to(device))
     torch.cuda.synchronize()
     # real measure
-    sum_time = 0.0
+    # sum_time = 0.0
+    beg = time.time()
     for i in range(trials):
-        start = torch.cuda.Event(enable_timing=True)
-        end = torch.cuda.Event(enable_timing=True)
-        start.record()
-        output = net(inputs)
-        end.record()
-        torch.cuda.synchronize()
-        sum_time += start.elapsed_time(end)
-    print(output)
-    print("time cost=", sum_time / trials, "ms")
+        # start = torch.cuda.Event(enable_timing=True)
+        # end = torch.cuda.Event(enable_timing=True)
+        # start.record()
+        output = net(inputs.to(device))
+        # end.record()
+        # torch.cuda.synchronize()
+        # sum_time += start.elapsed_time(end)
+    # print(output)
+    end = time.time()
+    print("end-to-end time cost=", (end - beg) * 1e3 / trials, "ms")

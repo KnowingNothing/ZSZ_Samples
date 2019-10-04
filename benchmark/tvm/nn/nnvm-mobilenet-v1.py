@@ -27,6 +27,7 @@ so the performance should be poor.
 """
 # pylint: disable=invalid-name
 from __future__ import absolute_import as _abs
+import time
 import tvm
 import nnvm
 from nnvm import symbol as sym
@@ -124,25 +125,34 @@ def generate_random_parameters(compute_graph, input_name, input_shape, with_inpu
 
 if __name__ == "__main__":    
     output = mobile_net()
-    data_shape = (1, 3, 224, 224)
+    data_shape = (128, 3, 224, 224)
+    trials = 400
 
     compute_graph = nnvm.graph.create(output)
     ctx = tvm.context("cuda", 0)
     params = generate_random_parameters(compute_graph, "data", data_shape, with_input=True, context=ctx)
+    input_data = params["data"]
     deploy_graph, lib, params = nnvm.compiler.build(compute_graph, target="cuda", 
                                         shape={"data": data_shape}, params=params)
     # print(deploy_graph.ir())
     module = graph_runtime.create(deploy_graph, lib, ctx)
 
-    module.run()
+    # warm-up
+    module.run(data=input_data)
     output = module.get_output(0, None)
-    print(output.asnumpy())
+    # print(output.asnumpy())
     
-    time_evaluator = module.module.time_evaluator("run", ctx, number=30, repeat=10)
+    # time_evaluator = module.module.time_evaluator("run", ctx, number=30, repeat=10)
 
-    time_cost = time_evaluator().mean * 1e3
+    # time_cost = time_evaluator().mean * 1e3
 
-    print("time_cost=", time_cost, "ms")
+    # print("time_cost=", time_cost, "ms")
+    beg = time.time()
+    for i in range(trials):
+        module.run(data=input_data)
+        output = module.get_output(0, None)
+    end = time.time()
+    print("end-to-end time cost=", (end - beg) * 1e3 / trials, "ms")
 
 
 
