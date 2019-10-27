@@ -30,10 +30,13 @@ CmProgram* LoadProgram(CmDevice* pCmDev, char* code)
     return program;
 }
 
-int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int tdx, int tdy, int KH=1024, int KW=1024, int nIter=1)
+int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=1024, int nIter=1)
 {
     // check input
     assert(H >= R && W >= S);
+    // each thread process 16 x 16 data
+    int tdx = 16;
+    int tdy = 16;
 
     storage_type_t stt = RowMajor;
 
@@ -61,8 +64,8 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int tdx, int tdy, in
     CmKernel* kernel = nullptr;
     cm_result_check(pCmDev->CreateKernel(program, "Conv2D_kernel", kernel));
 
-    double* image_host = (double*) malloc(H * W * sizeof(double));
-    double* filter_host = (double*) malloc(R * S * sizeof(double));
+    float* image_host = (float*) malloc(H * W * sizeof(float));
+    float* filter_host = (float*) malloc(R * S * sizeof(float));
 
     // init
     for (int i = 0; i < H; ++i)
@@ -81,8 +84,8 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int tdx, int tdy, in
         }
     }
 
-    double* result_host = (double*) malloc(H_out * W_out * sizeof(double));
-    double* result_golden = (double*) malloc(H_out * W_out * sizeof(double));
+    float* result_host = (float*) malloc(H_out * W_out * sizeof(float));
+    float* result_golden = (float*) malloc(H_out * W_out * sizeof(float));
 
     //TODO: write the kernel
     kernel->SetKernelArg(0, 4, &H);
@@ -94,11 +97,11 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int tdx, int tdy, in
     cm_result_check(pCmDev->CreateQueue(pCmQueue));
 
     CmBuffer* image = nullptr;
-    cm_result_check(pCmDev->CreateBuffer(H * W * sizeof(double), image));
+    cm_result_check(pCmDev->CreateBuffer(H * W * sizeof(float), image));
     CmBuffer* filter = nullptr;
-    cm_result_check(pCmDev->CreateBuffer(R * S * sizeof(double), filter));
+    cm_result_check(pCmDev->CreateBuffer(R * S * sizeof(float), filter));
     CmBuffer* result = nullptr;
-    cm_result_check(pCmDev->CreateBuffer(H_out * W_out * sizeof(double), result));
+    cm_result_check(pCmDev->CreateBuffer(H_out * W_out * sizeof(float), result));
 
     cm_result_check(image->WriteSurface((BYTE*) image_host, nullptr));
     cm_result_check(filter->WriteSurface((BYTE*) filter_host, nullptr));
@@ -113,8 +116,6 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int tdx, int tdy, in
     kernel->SetKernelArg(4, sizeof(SurfaceIndex), image_index);
     kernel->SetKernelArg(5, sizeof(SurfaceIndex), filter_index);
     kernel->SetKernelArg(6, sizeof(SurfaceIndex), result_index);
-    kernel->SetKernelArg(9, 4, &tdx);
-    kernel->SetKernelArg(10, 4, &tdy);
 
     CmTask* pKernelArray = nullptr;
     cm_result_check(pCmDev->CreateTask(pKernelArray));
@@ -207,5 +208,5 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int tdx, int tdy, in
 
 int main(int argc, char** argv)
 {
-    RunConv2D(/*H=*/1026, /*W=*/1026, /*R=*/3, /*S=*/3, /*gdx=*/16, /*gdy=*/16, /*tdx=*/16, /*tdy=*/16);
+    RunConv2D(/*H=*/1026, /*W=*/1026, /*R=*/3, /*S=*/3, /*gdx=*/16, /*tdy=*/16);
 }
