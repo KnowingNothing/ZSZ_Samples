@@ -21,11 +21,11 @@ CmProgram* LoadProgram(CmDevice* pCmDev, char* code)
     void *pCommonISACode = (BYTE*) malloc(codeSize);
 
     fread(pCommonISACode, 1, codeSize, pISA);
-    flcose(pISA);
+    fclose(pISA);
 
     CmProgram* program = nullptr;
     cm_result_check(pCmDev->LoadProgram(pCommonISACode, codeSize, program));
-    free(pCommonISACOde);
+    free(pCommonISACode);
 
     return program;
 }
@@ -137,14 +137,14 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
             {
                 kernel->SetKernelArg(7, 4, &sr);
                 kernel->SetKernelArg(8, 4, &sc);
-                long long time_in_ns = 0;
+                long long unsigned time_in_ns = 0;
                 std::chrono::nanoseconds start = std::chrono::duration_cast<std::chrono::nanoseconds> (
                     std::chrono::system_clock::now().time_since_epoch());
                 cm_result_check(pCmQueue->EnqueueWithGroup(pKernelArray, e, groups));
                 for (e->GetStatus(s); s != CM_STATUS_FINISHED; e->GetStatus(s));
                 std::chrono::nanoseconds end = std::chrono::duration_cast<std::chrono::nanoseconds> (
                     std::chrono::system_clock::now().time_since_epoch());
-                host_ns += (end.count() - start.cout());
+                host_ns += (end.count() - start.count());
                 cm_result_check(e->GetExecutionTime(time_in_ns));
                 kernel_ns += time_in_ns;
             }
@@ -153,7 +153,7 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
     double host_time_cost = host_ns / 1000.0 / nIter;
     double kernel_time_cost = kernel_ns / 1000.0 / nIter;
 
-    cm_result_check(result->ReadSurface(result_host, nullptr));
+    cm_result_check(result->ReadSurface((BYTE*) result_host, nullptr));
 
     for (int i = 0; i < H_out; ++i)
     {
