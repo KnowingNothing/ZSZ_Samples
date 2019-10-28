@@ -17,9 +17,9 @@ extern "C" _GENX_MAIN_ void conv2d_kernel(
     // return 0 to check host program
     vector<float, 16 * 16> v = 0;
     int gid = cm_linear_global_id();
-    for (int i = 0; i < 16 * 16; i += 32)
+    for (int i = 0; i < 16 * 16; i += 8)
     {
-	write(result, gid * 16 * 16 * sizeof(float), v.select<32, 1>(i));
+	write(result, gid * 16 * 16 * sizeof(float), v.select<8, 1>(i));
     }
 
     // cmk_write<float, 16 * 16>(result, gid * 16 * 16 * sizeof(float), v);
