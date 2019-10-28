@@ -62,7 +62,7 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
     CmProgram* program = LoadProgram(pCmDev, "Conv2D_genx.isa");
 
     CmKernel* kernel = nullptr;
-    cm_result_check(pCmDev->CreateKernel(program, "Conv2D_kernel", kernel));
+    cm_result_check(pCmDev->CreateKernel(program, "conv2d_kernel", kernel));
 
     float* image_host = (float*) malloc(H * W * sizeof(float));
     float* filter_host = (float*) malloc(R * S * sizeof(float));
@@ -72,7 +72,7 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
     {
         for (int j = 0; j < W; ++j)
         {
-            image_host[i * W + j] = 0.0;
+            image_host[i * W + j] = 1.0;
         }
     }
 
@@ -80,7 +80,7 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
     {
         for (int j = 0; j < S; ++j)
         {
-            filter_host[i * S + j] = 0.0;
+            filter_host[i * S + j] = 1.0;
         }
     }
 
@@ -208,5 +208,5 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
 
 int main(int argc, char** argv)
 {
-    RunConv2D(/*H=*/1026, /*W=*/1026, /*R=*/3, /*S=*/3, /*gdx=*/16, /*tdy=*/16);
+    RunConv2D(/*H=*/18, /*W=*/18, /*R=*/3, /*S=*/3, /*gdx=*/16, /*tdy=*/16);
 }
