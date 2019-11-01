@@ -20,7 +20,7 @@ HOST_FILE = $(filter-out $(KERNEL_FILE), $(ALL_FILE))
 APP         := $(APP_NAME)
 
 CXX           := g++
-INCL          := -I$(CM_ROOT)/runtime/include -I$(CM_ROOT)/examples
+INCL          := -I$(CM_ROOT)/runtime/include -I$(CM_ROOT)/examples/common
 CXXFLAGS      := -w -g ${INCL} -msse4.1 -D__LINUX__ -DLINUX -O0 -std=gnu++11 -fPIC -c -DCM_$(subst gen,GEN,$(GEN_MODE)) -rdynamic -ffloat-store
 
 .PHONY: clean, hw_x64, all
