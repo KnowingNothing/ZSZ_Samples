@@ -14,10 +14,7 @@ extern "C" _GENX_MAIN_ void conv2d_kernel(
 {
     int H_out = (H - R) + 1;
     int W_out = (W - S) + 1;
-
-
-
-    // return golden to check host program
+    // return 0 to check host program
     vector<float, 16 * 16> v = 9.0;
     int gid = cm_linear_global_id();
 
