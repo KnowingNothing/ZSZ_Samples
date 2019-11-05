@@ -38,13 +38,13 @@ CmProgram* LoadProgram(CmDevice* pCmDev, char* code)
     return program;
 }
 
-int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=1024, int nIter=1)
+int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int nIter=1)
 {
     // check input
     assert(H >= R && W >= S);
     // each thread process 4 x 4 data
     int tdx = 4;
-    int tdy = 4;
+    int tdy = 128;
 
     storage_type_t stt = RowMajor;
 
@@ -86,7 +86,7 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
 
     CmKernel* kernel = nullptr;
     // the kernel name must be identical to that in xxx_genx.cpp
-    cm_result_check(pCmDev->CreateKernel(program, "conv2d_kernel_3x3_b4x4", kernel));
+    cm_result_check(pCmDev->CreateKernel(program, "conv2d_kernel_3x3_b8x4", kernel));
 
     // the input data must be aligned by 16 bytes, for 3x3 convolution, it's sufficient to add 2 floats per row
     float* image_host = (float*) malloc((H + R - 1) * (W + S + 1) * sizeof(float));
@@ -109,7 +109,7 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
         }
     }
 
-    // check the inputs
+    // //check the inputs
     // for (int i = 0; i < H + R - 1; ++i)
     // {
     //     for (int j = 0; j < W + S + 1; ++j)
@@ -119,13 +119,13 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
     //     std::cout << std::endl;
     // }
 
-    for (int i = 0; i < R; ++i)
-    {
-        for (int j = 0; j < S; ++j)
-        {
-            filter_host[i * S + j] = 0.0 + i + j;
-        }
-    }
+    // for (int i = 0; i < R; ++i)
+    // {
+    //     for (int j = 0; j < S; ++j)
+    //     {
+    //         filter_host[i * S + j] = 0.0 + i + j;
+    //     }
+    // }
 
     float* result_host = (float*) malloc(H_out * W_out * sizeof(float));
     float* result_golden = (float*) malloc(H_out * W_out * sizeof(float));
@@ -172,7 +172,7 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
     long long kernel_ns = 0;
     long long host_ns = 0;
 
-    for (int it = 0; it < nIter; ++it)
+    for (int it = -nIter; it < nIter; ++it)
     {
         long long unsigned time_in_ns = 0;
         std::chrono::nanoseconds start = std::chrono::duration_cast<std::chrono::nanoseconds> (
@@ -181,9 +181,11 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int KH=1024, int KW=
         for (e->GetStatus(s); s != CM_STATUS_FINISHED; e->GetStatus(s));
         std::chrono::nanoseconds end = std::chrono::duration_cast<std::chrono::nanoseconds> (
             std::chrono::system_clock::now().time_since_epoch());
-        host_ns += (end.count() - start.count());
+        if (it >= 0)
+            host_ns += (end.count() - start.count());
         cm_result_check(e->GetExecutionTime(time_in_ns));
-        kernel_ns += time_in_ns;
+        if (it >= 0)
+            kernel_ns += time_in_ns;
     }
     double host_time_cost = host_ns / 1000.0 / nIter;
     double kernel_time_cost = kernel_ns / 1000.0 / nIter;
@@ -251,5 +253,7 @@ int main(int argc, char** argv)
     // H and W should be 2^x where x >= 2
     // size of H and W are limited by SLM && registers, because currently we compute the whole image at a time
     // by spliting the image to small parts, H and W can be unlimited
-    RunConv2D(/*H=*/128, /*W=*/4, /*R=*/3, /*S=*/3, /*gdx=*/1, /*gdy=*/8);
+    for (int i = 2; i <= 128 / 4; i *= 2)
+    for (int j = 1; j <= 128 / 128; j *= 2)
+        RunConv2D(/*H=*/128, /*W=*/128, /*R=*/3, /*S=*/3, /*gdx=*/i, /*gdy=*/j, 100);
 }

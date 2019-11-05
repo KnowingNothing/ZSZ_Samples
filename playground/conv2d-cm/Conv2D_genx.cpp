@@ -17,14 +17,14 @@
 #define MIN(x, y) (x < y? x : y)
 #define SLM_SIZE 256
 #define NUM_LANE 4
-#define NUM_P 4
+#define NUM_P 128
 #define KERNEL_H 3
 #define KERNEL_W 3
 #define SLM_ALIGN_LEN 8
 
 // process 4 x 4 box of image for 3 x 3 convolution
 
-extern "C" _GENX_MAIN_ void conv2d_kernel_3x3_b4x4(
+extern "C" _GENX_MAIN_ void conv2d_kernel_3x3_b8x4(
     int W,    // width of output data
     int lw,   // width of input data (not original image)
     SurfaceIndex image, SurfaceIndex filter, SurfaceIndex result)   
@@ -45,18 +45,19 @@ extern "C" _GENX_MAIN_ void conv2d_kernel_3x3_b4x4(
     matrix<float, NUM_P + KERNEL_H - 1, NUM_LANE + KERNEL_W - 1> img_regs;
     matrix<float, NUM_P, NUM_LANE + KERNEL_W - 1> res_regs = 0.0;
     vector<float, ALIGN(KERNEL_H * (NUM_LANE + KERNEL_W - 1), SLM_ALIGN_LEN)> weight_regs;
-    vector<unsigned int, ALIGN(KERNEL_H * (NUM_LANE + KERNEL_W - 1), SLM_ALIGN_LEN)> addr;
+    vector<unsigned int, ALIGN(KERNEL_H * (NUM_LANE + KERNEL_W - 1), SLM_ALIGN_LEN)> addr = 0;
 
     // init addr
     // we can actually use const global arrays to initialize addr
     // but that is not general
     // using for loop is general but not good for performance
-    for (int it = 0; it < ALIGN(KERNEL_H * (NUM_LANE + KERNEL_W - 1), SLM_ALIGN_LEN) / (NUM_LANE + KERNEL_W - 1); ++it)
+    // loop from 1 because the first row is already initialized to be zeros
+    for (int it = 1; it < ALIGN(KERNEL_H * (NUM_LANE + KERNEL_W - 1), SLM_ALIGN_LEN) / (NUM_LANE + KERNEL_W - 1); ++it)
     {
         addr.select<(NUM_LANE + KERNEL_W - 1), 1>(it * (NUM_LANE + KERNEL_W - 1)) = it * KERNEL_H;
     }
-    // disable the redundant address intorduced by alignment
-    addr.select<ALIGN(KERNEL_H * (NUM_LANE + KERNEL_W - 1), SLM_ALIGN_LEN) - KERNEL_H * (NUM_LANE + KERNEL_W - 1), 1>(KERNEL_H * (NUM_LANE + KERNEL_W - 1)) = 0;
+    // disable the redundant address intorduced by alignment, not necessary
+    // addr.select<ALIGN(KERNEL_H * (NUM_LANE + KERNEL_W - 1), SLM_ALIGN_LEN) - KERNEL_H * (NUM_LANE + KERNEL_W - 1), 1>(KERNEL_H * (NUM_LANE + KERNEL_W - 1)) = 0;
 
     // load image data row by row because our dataport is general 1D surface, they should be aligned
     // so the rows are not adjacent and can't be loaded at a time
@@ -93,6 +94,10 @@ extern "C" _GENX_MAIN_ void conv2d_kernel_3x3_b4x4(
             }
             // update address
             addr += 1;
+            // for (int kkk = 0; kkk < NUM_P; ++kkk)
+            // {
+            //     res_regs.row(i) = img_regs.row(i);
+            // }
         }
         // restore address for next row of points
         addr -= KERNEL_W;
