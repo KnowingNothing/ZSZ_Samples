@@ -38,7 +38,7 @@ CmProgram* LoadProgram(CmDevice* pCmDev, char* code)
     return program;
 }
 
-int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int nIter=1)
+int RunConv2D_conv2d_kernel_3x3_b8x4(int H, int W, int R, int S, int gdx, int gdy, int nIter=1)
 {
     // check input
     assert(H >= R && W >= S);
@@ -172,7 +172,7 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int nIter=1)
     long long kernel_ns = 0;
     long long host_ns = 0;
 
-    for (int it = -nIter; it < nIter; ++it)
+    for (int it = -1; it < nIter; ++it)
     {
         long long unsigned time_in_ns = 0;
         std::chrono::nanoseconds start = std::chrono::duration_cast<std::chrono::nanoseconds> (
@@ -187,8 +187,8 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int nIter=1)
         if (it >= 0)
             kernel_ns += time_in_ns;
     }
-    double host_time_cost = host_ns / 1000.0 / nIter;
-    double kernel_time_cost = kernel_ns / 1000.0 / nIter;
+    double host_time_cost = host_ns / 1e6 / nIter;
+    double kernel_time_cost = kernel_ns / 1e6 / nIter;
 
     cm_result_check(result->ReadSurface((BYTE*) result_host, nullptr));
 
@@ -245,6 +245,155 @@ int RunConv2D(int H, int W, int R, int S, int gdx, int gdy, int nIter=1)
 }
 
 
+int RunConv2D_conv2d_kernel_3x3(int H, int W, int nIter=1)
+{
+    CmDevice *pdev = nullptr;
+    unsigned int version = 0;
+    cm_result_check(::CreateCmDevice(pdev, version));
+    if (version < CM_1_0)
+    {
+        std::cout << "Runtime API too old (" << version << "<" << CM_1_0 << ")" << std::endl;
+        return -1;
+    }
+
+    CmProgram* program = LoadProgram(pdev, "Conv2D_genx.isa");
+    CmKernel* kernel = nullptr;
+    cm_result_check(pdev->CreateKernel(program, "conv2d_kernel_3x3", kernel));
+
+    float* image_host = (float*) malloc((H + 2) * (W + 2) * sizeof(float));
+    float* filter_host = (float*) malloc(4 * 4 * sizeof(float));
+
+    for (int i = 0; i < (H + 2) * (W + 2); ++i)
+    {
+        image_host[i] = 0.0f + 1;
+    }
+    for (int j = 0; j < 4 * 4; ++j)
+    {
+        filter_host[j] = 0.0f + 2;
+    }
+
+    std::cout << "data ready" << std::endl;
+
+    float* result_host = (float*) malloc(H * W * sizeof(float));
+    float* result_golden = (float*) malloc(H * W * sizeof(float));
+
+    CmQueue* pCmQueue = nullptr;
+    cm_result_check(pdev->CreateQueue(pCmQueue));
+
+    CmSurface2D* image_surface = nullptr;
+    cm_result_check(pdev->CreateSurface2D(W + 2, H + 2, CM_SURFACE_FORMAT_A8R8G8B8, image_surface));
+    CmSurface2D* filter_surface = nullptr;
+    cm_result_check(pdev->CreateSurface2D(4, 4, CM_SURFACE_FORMAT_A8R8G8B8, filter_surface));
+    CmSurface2D* result_surface = nullptr;
+    cm_result_check(pdev->CreateSurface2D(W, H, CM_SURFACE_FORMAT_A8R8G8B8, result_surface));
+
+    std::cout << "surface ready" << std::endl;
+
+    cm_result_check(image_surface->WriteSurface((BYTE*) image_host, nullptr));
+
+    std::cout << "image write surface ready" << std::endl;
+    cm_result_check(filter_surface->WriteSurface((BYTE*) filter_host, nullptr));
+
+    std::cout << "write surface ready" << std::endl;
+    
+    SurfaceIndex* image_index = nullptr;
+    SurfaceIndex* filter_index = nullptr;
+    SurfaceIndex* result_index = nullptr;
+    image_surface->GetIndex(image_index);
+    filter_surface->GetIndex(filter_index);
+    result_surface->GetIndex(result_index);
+    
+    kernel->SetKernelArg(0, sizeof(SurfaceIndex), image_index);
+    kernel->SetKernelArg(1, sizeof(SurfaceIndex), filter_index);
+    kernel->SetKernelArg(2, sizeof(SurfaceIndex), result_index);
+
+    std::cout << "kernel args ready" << std::endl;
+
+    CmTask* pKernelArray = nullptr;
+    cm_result_check(pdev->CreateTask(pKernelArray));
+    cm_result_check(pKernelArray->AddKernel(kernel));
+
+    CmThreadSpace* thread_space = nullptr;
+    cm_result_check(pdev->CreateThreadSpace(W / 16, H / 8, thread_space));
+
+    CmEvent* e = nullptr;
+    CM_STATUS s;
+    long long kernel_ns = 0;
+    long long host_ns = 0;
+
+    for (int it = -1; it < nIter; ++it)
+    {
+        long long unsigned time_in_ns = 0;
+        std::chrono::nanoseconds start = std::chrono::duration_cast<std::chrono::nanoseconds> (
+            std::chrono::system_clock::now().time_since_epoch());
+        cm_result_check(pCmQueue->Enqueue(pKernelArray, e, thread_space));
+        for (e->GetStatus(s); s != CM_STATUS_FINISHED; e->GetStatus(s));
+        std::chrono::nanoseconds end = std::chrono::duration_cast<std::chrono::nanoseconds> (
+            std::chrono::system_clock::now().time_since_epoch());
+        if (it >= 0)
+            host_ns += (end.count() - start.count());
+        cm_result_check(e->GetExecutionTime(time_in_ns));
+        if (it >= 0)
+            kernel_ns += time_in_ns;
+    }
+    double host_time_cost = host_ns / 1e6 / nIter;
+    double kernel_time_cost = kernel_ns / 1e6 / nIter;
+
+    cm_result_check(result_surface->ReadSurface((BYTE*) result_host, nullptr));
+
+    for (int i = 0; i < H; ++i)
+    {
+        for (int j = 0; j < W; ++j)
+        {
+            double tmp = 0.0;
+            for (int p = 0; p < 3; ++p)
+            {
+                for (int q = 0; q < 3; ++q)
+                {
+                    tmp += image_host[(i + p) * (W + 2) + (j + q)] * filter_host[p * 4 + q];
+                }
+            }
+            result_golden[i * W + j] = tmp;
+        }
+    }
+
+    // check
+    int errs = 0;
+    for (int i = 0; i < H; ++i)
+    {
+        for (int j = 0; j < W; ++j)
+        {
+            if (fabs(result_golden[i * W + j] - result_host[i * W + j]) >= 1e-3)
+            {
+                errs += 1;
+            }
+        }
+    }
+
+    if (errs > 0)
+    {
+        std::cout << "Results wrong!" << std::endl;
+        std::cout << "Print results: (golden, yours):" << std::endl;
+        for (int i = 0; i < H; ++i)
+        {
+            for (int j = 0; j < W; ++j)
+            {
+                std::cout << "(" << result_golden[i * W + j] << ", " << result_host[i * W + j] << ") ";
+            }
+            std::cout << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << "Passed!" << std::endl;
+    }
+
+    std::cout << "Device time cost: " << kernel_time_cost << " ms" <<  std::endl;
+    std::cout << "Host time cost  : " << host_time_cost << " ms" << std::endl;
+    return -errs;
+}
+
+
 int main(int argc, char** argv)
 {
     // gdx must be factor is W && W / gdx >= 4
@@ -253,7 +402,9 @@ int main(int argc, char** argv)
     // H and W should be 2^x where x >= 2
     // size of H and W are limited by SLM && registers, because currently we compute the whole image at a time
     // by spliting the image to small parts, H and W can be unlimited
-    for (int i = 2; i <= 128 / 4; i *= 2)
-    for (int j = 1; j <= 128 / 128; j *= 2)
-        RunConv2D(/*H=*/128, /*W=*/128, /*R=*/3, /*S=*/3, /*gdx=*/i, /*gdy=*/j, 100);
+
+    // for (int i = 2; i <= 128 / 4; i *= 2)
+    // for (int j = 1; j <= 128 / 128; j *= 2)
+    //     RunConv2D_conv2d_kernel_3x3_b8x4(/*H=*/128, /*W=*/128, /*R=*/3, /*S=*/3, /*gdx=*/i, /*gdy=*/j, 10);
+    RunConv2D_conv2d_kernel_3x3(3200, 3200, 100);
 }

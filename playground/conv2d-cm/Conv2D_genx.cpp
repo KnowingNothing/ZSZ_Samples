@@ -113,3 +113,81 @@ extern "C" _GENX_MAIN_ void conv2d_kernel_3x3_b8x4(
     }
     
 }
+
+
+#define M 8
+#define N 16
+
+extern "C" _GENX_MAIN_ void conv2d_kernel_3x3(SurfaceIndex img, SurfaceIndex filt, SurfaceIndex res)
+{
+    matrix<float, M + 2, N + 2> in = 3.0f;
+    matrix<float, 3, 3> w;
+    matrix<float, M, N> out = 0.0f;
+
+    uint h_pos = get_thread_origin_x();
+    uint v_pos = get_thread_origin_y();
+
+    #pragma unroll
+    for (int i = 0; i < (M + 2) / 8; ++i)
+    {
+        #pragma unroll
+        for (int j = 0; j < (N + 2) / 8; ++j)
+        {
+            read(img, h_pos * N * 4 + j * 8 * 4, v_pos * M + i * 8, in.select<8, 1, 8, 1>(i * 8, j * 8));
+        }
+        if ((N + 2) / 8 * 8 < N + 2)
+        {
+            read(img, h_pos * N * 4 + (N + 2) / 8 * 8 * 4, v_pos * M + i * 8, in.select<8, 1, N + 2 - (N + 2) / 8 * 8, 1>(i * 8, (N + 2) / 8 * 8));
+        }
+    }
+    if ((M + 2) / 8 * 8 < M + 2)
+    {
+        #pragma unroll
+        for (int j = 0; j < (N + 2) / 8; ++j)
+        {
+            read(img, h_pos * N * 4 + j * 8 * 4, v_pos * M + (M + 2) / 8 * 8, in.select<M + 2 - (M + 2) / 8 * 8, 1, 8, 1>((M + 2) / 8 * 8, j * 8));
+        }
+        if ((N + 2) / 8 * 8 < N + 2)
+        {
+            read(img, h_pos * N * 4 + (N + 2) / 8 * 8 * 4, v_pos * M + (M + 2) / 8 * 8, in.select<M + 2 - (M + 2) / 8 * 8, 1, N + 2 - (N + 2) / 8 * 8, 1>((M + 2) / 8 * 8, (N + 2) / 8 * 8));
+        }
+    }
+    //read(img, h_pos * N * 4, v_pos * M, in);
+    read(filt, 0, 0, w);
+
+    #pragma unroll
+    for (int i = 0; i < 3; ++i)
+    {
+        #pragma unroll
+        for (int j = 0; j < 3; ++j)
+        {
+            out += w.replicate<M * N, 1>(i, j) * in.select<M, 1, N, 1>(i, j);
+        }
+    }   
+
+    #pragma unroll
+    for (int i = 0; i < M / 8; ++i)
+    {
+        #pragma unroll
+        for (int j = 0; j < N / 8; ++j)
+        {
+            write(res, h_pos * N * 4 + j * 8 * 4, v_pos * M + i * 8, out.select<8, 1, 8, 1>(i * 8, j * 8));
+        }
+        // if (N / 8 * 8 < N)
+        // {
+        //     write(res, h_pos * N * 4 + N / 8 * 8 * 4, v_pos * M + i * 8, out.select<8, 1, N - N / 8 * 8, 1>(i * 8, N / 8 * 8));
+        // }
+    }
+    // if (M / 8 * 8 < M)
+    // {
+    //     for (int j = 0; j < N / 8; ++j)
+    //     {
+    //         write(res, h_pos * N * 4 + j * 8 * 4, v_pos * M + M / 8 * 8, out.select<M - M / 8 * 8, 1, 8, 1>(M / 8 * 8, j * 8));
+    //     }
+    //     if (N / 8 * 8 < N)
+    //     {
+    //         write(res, h_pos * N * 4 + N / 8 * 8 * 4, v_pos * M + M / 8 * 8, out.select<M - M / 8 * 8, 1, N - N / 8 * 8, 1>(M / 8 * 8, N / 8 * 8));
+    //     }
+    // }
+    //write(res, h_pos * N * 4, v_pos * M, out);
+}
