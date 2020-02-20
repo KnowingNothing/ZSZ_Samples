@@ -1,0 +1,2 @@
+let rec extend a b = if a = [] then b else (List.hd a)::extend(List.tl a)(b);;
+let rec rev l = if l = [] then [] else extend(rev(List.tl l))((List.hd l)::[]);;
