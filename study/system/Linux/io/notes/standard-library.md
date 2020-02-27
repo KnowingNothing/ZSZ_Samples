@@ -103,3 +103,54 @@ int putchar(int c);
 char *fgets(char *s, int n, FILE *stream);
 char *gets(char *s);
 ```
+
+### 9. printf, fprintf, sprintf
+sprintf会自动加一个字符串结尾字符。可以用%hd表示short，并且对于gcc可以加-Wformat检查printf的格式。
+控制长度：
+%10s: 左侧补充空格，总长度为10
+%-10s： 右侧补充空格
+%010d: 用0补齐
+%10.4f: 控制4位小数
+%*s: 用一个参数控制长度
+输出不会自动截断。返回值是实际输出的字符数，不包括自动加的字符串尾。
+```c
+#include <stdio.h>
+
+int printf(const char *format, ...);
+int sprintf(char *s, const char *format, ...);
+int fprintf(FILE *stream, const char *format, ...);
+```
+
+### 10. scanf, fscanf, sscanf
+可以用%[]读取一个字符集合，用*表示要丢弃的值。读取数字、字符串时候会略过空白字符，但是%c不会略过。返回值是读取的数据项个数。如果读第一个数据项之前就到达了文件尾，返回EOF。
+```c
+#include <stdio.h>
+
+int scanf(const char *format, ...);
+int fscanf(FILE *stream, const char *format, ...);
+int sscanf(const char *s, const char *format, ...);
+```
+
+### 11. 其他
+fgetpos: 获取文件流当前读写位置
+fsetpos
+ftell: 返回文件流当前读写位置偏移值
+rewind: 重制文件流中读写位置
+freopen: 重新使用一个文件流
+setvbuf: 设置文件流缓冲机制
+remove: 相当于unlink或rmdir
+
+### 12. 文件流错误
+```c
+#include <errno.h>
+
+extern int errno;
+```
+
+```c
+#include <stdio.h>
+
+int ferror(FILE *stream);
+int feof(FILE *stream);
+void clearerr(FILE *stream)
+```
