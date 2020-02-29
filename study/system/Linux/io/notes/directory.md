@@ -51,3 +51,65 @@ int rmdir(const char *path);
 int chdir(const char *path);
 char *getcwd(char *buf, size_t size);
 ```
+
+## 扫描目录
+目录流和文件流相似，定义在dirent.h里声明了DIR和dirent结构。主要使用的函数有:
+```sh
+opendir
+closedir
+readdir
+telldir
+seekdir
+closedir
+```
+
+### opendir
+创建目录流，返回一个指向DIR结构指针。失败时返回空指针。
+```c
+#include <sys/types.h>
+#include <dirent.h>
+
+DIR *opendir(const char *name);
+```
+
+### readdir
+函数返回一个指针，指向的内容是目录流中下一个目录项，遇到错误或目录尾时返回NULL，如果是目录尾，不改变errno，否则会改变errno。
+```c
+#include <sys/types.h>
+#include <dirent.h>
+
+struct dirent *readdir(DIR *dirp);
+```
+
+dirent结构中包含的目录项内容包括：
+```sh
+ino_t d_ino: 文件inode节点号
+char d_name[]: 文件名
+```
+
+### telldir
+telldir返回目录流的当前位置。
+```c
+#include <sys/types.h>
+#include <dirent.h>
+
+long int telldir(DIR *dirp);
+```
+
+### seekdir
+设置目录流位置。
+```c
+#include <sys/types.h>
+#include <dirent.h>
+
+void seekdir(DIR *dirp, long int loc);
+```
+
+### closedir
+关闭目录流
+```c
+#include <sys/types.h>
+#include <dirent.h>
+
+int closedir(DIR *dirp);
+```
