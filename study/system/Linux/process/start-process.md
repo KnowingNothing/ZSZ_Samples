@@ -81,3 +81,5 @@ waitpid也是可以用来等待子进程的。
 pid_t waitpid(pid_t pid, int *stat_loc, int options);
 ```
 pid参数指定要等待的子进程，如果是-1，则等待任意一个子进程。option可以用来改变waitpid的行为，如WNOHANG就是查找是否有子进程，如果没有，程序将继续执行。子进程没有停止或者意外终止，都会返回0，否则返回子进程的PID。调用失败时返回-1。
+
+### 3. 输入输出重定向
