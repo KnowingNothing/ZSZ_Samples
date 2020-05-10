@@ -97,3 +97,64 @@ laymen
 perishable
 feminist
 concede
+
+### 2020-5-10
+patrol
+faculty
+tardiness 拖延
+acquisition
+cacti 仙人掌
+salinity 盐度
+colloquial 白话的
+dove
+mundane 乏味的
+astronaut
+bolster
+lampshade
+spontaneous 自发的
+multitude
+caricature
+competitiveness
+passionately
+tuition
+discern
+scramble
+native to
+helmet
+rifle
+with distinction
+rebellious
+monotonous
+steamed bread 馒头
+soldier
+generous
+courteously
+pregnant
+roost
+Picasso
+exhibit
+culminate
+climax
+reclaim
+conception
+brittle
+peel
+weeds
+anomaly
+stunning
+dart
+termite
+perplex
+exhilarating
+skydiving
+referee
+whistle
+onset
+publicize
+doctoral
+slavish
+declaration
+untamed
+oozing
+contract
+wrinkle
