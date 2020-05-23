@@ -158,3 +158,11 @@ untamed
 oozing
 contract
 wrinkle
+
+## 2020-5-20
+untethered 未系紧
+levitate
+anomaly
+foveation
+engrossing 引人入胜的
+calibrate
