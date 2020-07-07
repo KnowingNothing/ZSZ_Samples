@@ -7,7 +7,7 @@
 1. 首先把公钥放在想要登陆的所有机器上。
 2. 本地机器上运行：
 ```sh
-ssh-agent
+ssh-agent bash
 ssh-add <私钥位置>
 ssh-add -l  # 查看已经添加的私钥
 ```
