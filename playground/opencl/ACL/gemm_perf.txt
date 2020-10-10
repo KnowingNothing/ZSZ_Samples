@@ -1,0 +1,9 @@
+Hikey 960 mali G71
+
+Time cost of GEMM with shape 16x16x16 dtype= float32 is: 0.1187 ms(10runs).
+Time cost of GEMM with shape 32x32x32 dtype= float32 is: 0.2712 ms(10runs).
+Time cost of GEMM with shape 64x64x64 dtype= float32 is: 0.356 ms(10runs).
+Time cost of GEMM with shape 128x128x128 dtype= float32 is: 0.6365 ms(10runs).
+Time cost of GEMM with shape 256x256x256 dtype= float32 is: 1.2545 ms(10runs).
+Time cost of GEMM with shape 512x512x512 dtype= float32 is: 7.6625 ms(10runs).
+Time cost of GEMM with shape 1024x1024x1024 dtype= float32 is: 69.5665 ms(10runs).
