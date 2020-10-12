@@ -21,3 +21,11 @@ Time cost of GEMM with shape 128x128x128 dtype= float32 is: 0.1544 ms(10runs).
 Time cost of GEMM with shape 256x256x256 dtype= float32 is: 0.5605 ms(10runs).
 Time cost of GEMM with shape 512x512x512 dtype= float32 is: 2.2481 ms(10runs).
 Time cost of GEMM with shape 1024x1024x1024 dtype= float32 is: 9.3361 ms(10runs).
+
+Time cost of GEMM with shape 16x16x16 dtype= float32 is: 0.09225 ms(100runs).
+Time cost of GEMM with shape 32x32x32 dtype= float32 is: 0.11339 ms(100runs).
+Time cost of GEMM with shape 64x64x64 dtype= float32 is: 0.12032 ms(100runs).
+Time cost of GEMM with shape 128x128x128 dtype= float32 is: 0.13575 ms(100runs).
+Time cost of GEMM with shape 256x256x256 dtype= float32 is: 0.48841 ms(100runs).
+Time cost of GEMM with shape 512x512x512 dtype= float32 is: 1.71144 ms(100runs).
+Time cost of GEMM with shape 1024x1024x1024 dtype= float32 is: 9.07065 ms(100runs).
