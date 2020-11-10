@@ -12,3 +12,5 @@ g++ cl_sgemm.cpp utils/*.cpp  -O2 -std=c++11 -I. -Iinclude -Iutils -L/system/ven
 
 g++ cl_sgemm.cpp utils/*.cpp  -O2 -std=c++11 -I. -Iinclude -Iutils -L/data/data/com.termux/files/home/arm_compute-v20.08-bin-android -L/data/data/com.termux/files/home/arm_compute-v20.08-bin-android/lib/android-arm64-v8a-cl -larm_compute -larm_compute_graph -larm_compute_core -lOpenCL -o cl_sgemm
 ```
+
+g++ measure_op/measure_acl_conv2d.cc utils/*.cpp  -O2 -std=c++11 -I. -Iinclude -Iutils -L/data/data/com.termux/files/home/arm_compute-v20.08-bin-android -L/data/data/com.termux/files/home/arm_compute-v20.08-bin-android/lib/android-arm64-v8a-cl -larm_compute -larm_compute_graph -larm_compute_core -lOpenCL -o measure_conv2d
