@@ -1,3 +1,4 @@
+## 2020-11-11以前
 # compile
 ```sh
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/data/data/com.termux/files/home/arm_compute-v20.08-bin-android/lib/android-arm64-v8a-cl:/system/vendor/lib64/
@@ -36,3 +37,42 @@ g++ measure_op/measure_acl_gemm.cc utils/*.cpp  -O2 -std=c++11 -I. -Iinclude -Iu
 ```sh
 LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/data/local/tmp/arm_compute-v20.08-bin-android/lib/android-arm64-v8a-cl:/data/local/tmp/usr/lib ./measure_gemm
 ```
+
+## 2020-12-7
+### 如何编译
+1. 准备好arm_compute-v20.08-bin-android prebuilt binaries，其位置为/path/to/acl，设置环境变量
+```sh
+export ACL_HOME=/path/to/acl
+```
+2. 安装ndk（使用r21b版本的），并使用ndk安装standalone-toolchains：
+```sh
+$NDK/build/tools/make_standalone_toolchain.py --arch arm64 --install-dir $MY_TOOLCHAINS/aarch64-linux-android-ndk-r21b --stl libc++ --api 21
+```
+这里可能会提示不需要进行安装，因为r21b的ndk似乎自带了toolchains，可以使用$NDK/toolchains/llvm/prebuilt/linux-x86_64/bin中的aarch64-linux-android21-clang++进行交叉编译，把它加入PATH中。
+3. 编译：
+```sh
+make measure_gemm
+```
+4. 运行：
+```sh
+adb push <binary> /data/local/tmp
+adb shell
+cd /data/local/tmp
+chmod 777 <binary>
+./<binary>
+```
+5. 输出：
+以GEMM为例子，输出如下，最后的sgementation fault目前无法避免，即使是运行官方例子也会有这个问题，但是它应该不影响测性能，似乎是回收资源的时候出了问题。
+```sh
+HWELS:/data/local/tmp $ ./measure_acl_gemm_aarch64
+Time cost of GEMM with shape 16x16x16 dtype= float32 is: 0.06008 ms(100runs).
+Time cost of GEMM with shape 32x32x32 dtype= float32 is: 0.05066 ms(100runs).
+Time cost of GEMM with shape 64x64x64 dtype= float32 is: 0.05106 ms(100runs).
+Time cost of GEMM with shape 128x128x128 dtype= float32 is: 0.10623 ms(100runs).
+Time cost of GEMM with shape 256x256x256 dtype= float32 is: 0.4792 ms(100runs).
+Time cost of GEMM with shape 512x512x512 dtype= float32 is: 1.67961 ms(100runs).
+Time cost of GEMM with shape 1024x1024x1024 dtype= float32 is: 8.97776 ms(100runs).
+Segmentation fault
+```
+6. 更多测试：
+测更多的shape，目前需要自己改源码中main函数里的shape信息。
