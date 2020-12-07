@@ -29,11 +29,18 @@ using namespace arm_compute::graph::frontend;
 using namespace arm_compute::graph_utils;
 using namespace utils;
 
-class ConvolutionMeasuree : public Measuree {
+class DepthwiseConvolutionMeasuree : public Measuree {
 public:
-  ConvolutionMeasuree(size_t N, size_t C, size_t H, size_t W, size_t K,
+  DepthwiseConvolutionMeasuree(size_t N, size_t C, size_t H, size_t W, size_t K,
                       size_t R, size_t S, size_t stride = 1, size_t padding = 0,
-                      std::string dtype = "float32") {
+                      size_t groups=1, std::string dtype = "float32") {
+    if (groups != C) {
+        throw std::runtime_error("Bad group number, expect equal to in channel.");
+    }
+    if (K % groups != 0) {
+        throw std::runtime_error("Bad group number, expect out channel % groups = 0.");
+    }
+    int IFM = K / groups;
     PadStrideInfo conv_info(stride, stride, padding, padding);
     Format format;
     if (dtype == "float32") {
@@ -42,7 +49,7 @@ public:
         format = Format::F16;
     }
     src0_.allocator()->init(TensorInfo(TensorShape(W, H, C, N), format));
-    src1_.allocator()->init(TensorInfo(TensorShape(S, R, C, K), format));
+    src1_.allocator()->init(TensorInfo(TensorShape(S, R, IFM), format));
     size_t w_out = (W - S + 2 * padding) / stride + 1;
     size_t h_out = (H - R + 2 * padding) / stride + 1;
     dst_.allocator()->init(TensorInfo(TensorShape(w_out, h_out, K, N), format));
@@ -61,21 +68,21 @@ public:
 
 private:
   CLTensor src0_, src1_, dst_;
-  CLConvolutionLayer conv2d;
+  CLDepthwiseConvolutionLayer conv2d;
 };
 
 void test(size_t N, size_t C, size_t H, size_t W, size_t K, size_t R, size_t S,
-          size_t stride = 1, size_t padding = 0, std::string dtype = "float32",
+          size_t stride = 1, size_t padding = 0, size_t groups=1, std::string dtype = "float32",
           int trials = 10) {
   auto Mr = std::make_shared<Measurer>();
   CLTuner tuner;
   auto sync = std::make_shared<ACLStreamSynchronizer>(&tuner);
   sync->init();
-  auto conv2d = std::make_shared<ConvolutionMeasuree>(N, C, H, W, K, R, S, stride,
-                                                    padding, dtype);
+  auto conv2d = std::make_shared<DepthwiseConvolutionMeasuree>(N, C, H, W, K, R, S, stride,
+                                                    padding, groups, dtype);
   double cost = Mr->measure(conv2d, sync, trials);
-  std::cout << "Time cost of Convolution with shape (" << N << "x" << C << "x"
-            << H << "x" << W << ") * (" << K << "x" << C << "x" << R << "x" << S
+  std::cout << "Time cost of Depthwise Convolution with shape (" << N << "x" << C << "x"
+            << H << "x" << W << ") * (" << K / C << "x" << R << "x" << S
             << ") "
             << "stride=" << stride << " padding=" << padding << " "
             << "dtype= " << dtype << " is: " << cost / 1e3 << " ms (" << trials
@@ -86,10 +93,13 @@ void test(size_t N, size_t C, size_t H, size_t W, size_t K, size_t R, size_t S,
 size_t arg_list[][9] = {
     // batch, in_channel, height, width, out_channel, kernel_h, kernel_w,
     // stride, padding
-    {1, 32, 112, 112, 32, 3, 3, 1, 1}, {1, 16, 112, 112, 96, 3, 3, 2, 1},
-    {1, 24, 56, 56, 144, 3, 3, 2, 1},  {1, 32, 28, 28, 192, 3, 3, 2, 1},
-    {1, 64, 14, 14, 384, 3, 3, 1, 1},  {1, 96, 14, 14, 576, 3, 3, 2, 1},
-    {1, 160, 7, 7, 960, 3, 3, 1, 1},
+    {1, 32, 112, 112, 32, 3, 3, 1, 1},
+    {1, 16, 112, 112, 16 * 6, 3, 3, 2, 1},
+    {1, 24, 56, 56, 24 * 6, 3, 3, 2, 1},
+    {1, 32, 28, 28, 32 * 6, 3, 3, 2, 1},
+    {1, 64, 14, 14, 64 * 6, 3, 3, 1, 1},
+    {1, 96, 14, 14, 96 * 6, 3, 3, 2, 1},
+    {1, 160, 7, 7, 160 * 6, 3, 3, 1, 1},
 };
 
 int main() {
@@ -105,7 +115,7 @@ int main() {
     S = arg_list[i][6];
     stride = arg_list[i][7];
     padding = arg_list[i][8];
-    test(N, C, H, W, K, R, S, stride, padding, "float32", 10);
+    test(N, C, H, W, K, R, S, stride, padding, C, "float32", 10);
   }
   return 0;
 }
