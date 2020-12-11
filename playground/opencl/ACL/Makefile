@@ -9,3 +9,6 @@ measure_gemm: measure_acl_gemm.cc $(ACL)/utils/Utils.cpp
 
 measure_conv2d: measure_acl_conv2d.cc $(ACL)/utils/Utils.cpp
 	$(CXX) $^ $(INCLUDES) $(FLAGS) $(LIBS) -o $@_aarch64
+
+measure_depthwise: measure_acl_depthwise.cc $(ACL)/utils/Utils.cpp
+	$(CXX) $^ $(INCLUDES) $(FLAGS) $(LIBS) -o $@_aarch64
