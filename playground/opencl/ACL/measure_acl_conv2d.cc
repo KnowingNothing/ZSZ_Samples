@@ -40,6 +40,8 @@ public:
         format = Format::F32;
     } else if (dtype == "float16") {
         format = Format::F16;
+    } else if (dtype == "int8") {
+        format = Format::U8;
     }
     src0_.allocator()->init(TensorInfo(TensorShape(W, H, C, N), format));
     src1_.allocator()->init(TensorInfo(TensorShape(S, R, C, K), format));
@@ -105,7 +107,7 @@ int main() {
     S = arg_list[i][6];
     stride = arg_list[i][7];
     padding = arg_list[i][8];
-    test(N, C, H, W, K, R, S, stride, padding, "float32", 10);
+    test(N, C, H, W, K, R, S, stride, padding, "int8", 10);
   }
   return 0;
 }
