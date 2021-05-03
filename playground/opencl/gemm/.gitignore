@@ -1,0 +1,8 @@
+gemm_cpu_naive
+gemm_cpu_opt
+gemm_gpu_naive
+gemm_gpu_memory_opt
+gemm_gpu_vload_opt
+gemm_gpu_multi_item_opt
+gemm_gpu_pipeline_opt
+trace.log
