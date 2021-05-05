@@ -1,0 +1,2 @@
+scp -P 4022 ../src/*  copper@162.105.77.69:/home/copper/v6/src/
+scp -P 4022 kernel/kernel.cl   copper@162.105.77.69:/home/copper/v6/Release/kernel/
