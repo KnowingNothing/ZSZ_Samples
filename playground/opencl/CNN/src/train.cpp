@@ -136,9 +136,9 @@ bool CNN::train() {
                "lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf,%lf\n",
                profile_layer[0][1], profile_layer[0][2], profile_layer[0][3],
                profile_layer[0][4], profile_layer[0][5], profile_layer[0][6],
-               profile_layer[1][6], profile_layer[1][5], profile_layer[1][4],
-               profile_layer[1][3], profile_layer[1][2], profile_layer[1][1],
-               profile_layer[1][0]);
+               profile_layer[1][0], profile_layer[1][1], profile_layer[1][2],
+               profile_layer[1][3], profile_layer[1][4], profile_layer[1][5],
+               profile_layer[1][6]);
       }
     } // 3 循环记忆训练
     // 4 学习结果判别
