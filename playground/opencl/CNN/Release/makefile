@@ -44,7 +44,7 @@ all: OpenCL_CNN
 OpenCL_CNN: $(OBJS) $(USER_OBJS)
 	@echo 'Building target: $@'
 	@echo 'Invoking: GCC C++ Linker'
-	g++  -o "OpenCL_CNN" $(OBJS) $(USER_OBJS) $(LIBS)
+	g++ -fopenmp -o "OpenCL_CNN" $(OBJS) $(USER_OBJS) $(LIBS) -lOpenCL -lopencv_core -lopencv_imgproc -lopencv_highgui
 	@echo 'Finished building target: $@'
 	@echo ' '
 

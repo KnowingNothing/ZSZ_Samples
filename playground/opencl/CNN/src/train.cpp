@@ -3,7 +3,7 @@
 
 using namespace std;
 
-#define PROFILE_LAYER
+// #define PROFILE_LAYER
 
 struct timeval tsBegin, tsEnd, ToltsBegin, ToltsEnd;
 long t1Duration;
@@ -38,6 +38,11 @@ bool CNN::train() {
         chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);         \
     profile_layer[1][N] = time_span.count() * 1e3;                             \
   }
+
+#ifdef TARGET_GPU
+    this->device_data_pointer = this->device_data_input_train;
+    this->device_label_pointer = this->device_data_output_train;
+#endif
   for (iter = 0; iter < num_epochs_CNN; iter++) {
     std::cout << "epoch: " << iter + 1 << std::endl;
     gettimeofday(&ToltsBegin, NULL);
@@ -49,6 +54,10 @@ bool CNN::train() {
       // 1 输入模式顺传播
       data_single_image = data_input_train + i * num_neuron_input_CNN;
       data_single_label = data_output_train + i * num_neuron_output_CNN;
+#ifdef TARGET_GPU
+      image_offset = i * num_neuron_input_CNN;
+      label_offset = i * num_neuron_output_CNN;
+#endif
 
       memcpy(neuron_input, data_single_image,
              num_neuron_input_CNN * sizeof(float));
@@ -71,12 +80,12 @@ bool CNN::train() {
         Forward_output();
       }
 #else
-      Forward_C1();
-      Forward_S2();
-      Forward_C3();
-      Forward_S4();
-      Forward_C5();
-      Forward_output();
+      // Forward_C1();
+      // Forward_S2();
+      // Forward_C3();
+      // Forward_S4();
+      // Forward_C5();
+      // Forward_output();
 #endif
 
       if (i % 1000 == 0) {
@@ -87,34 +96,36 @@ bool CNN::train() {
         gettimeofday(&tsBegin, NULL);
       }
 
+      continue;
+
       // 2 输出误差逆传播
-#ifdef PROFILE_LAYER
-      if (i % 1000 == 0) {
-        PROFILE_BACKWARD(6, output)
-        PROFILE_BACKWARD(5, C5)
-        PROFILE_BACKWARD(4, S4)
-        PROFILE_BACKWARD(3, C3)
-        PROFILE_BACKWARD(2, S2)
-        PROFILE_BACKWARD(1, C1)
-        PROFILE_BACKWARD(0, input)
-      } else {
-        Backward_output();
-        Backward_C5();
-        Backward_S4();
-        Backward_C3();
-        Backward_S2();
-        Backward_C1();
-        Backward_input();
-      }
-#else
-      Backward_output();
-      Backward_C5();
-      Backward_S4();
-      Backward_C3();
-      Backward_S2();
-      Backward_C1();
-      Backward_input();
-#endif
+// #ifdef PROFILE_LAYER
+//       if (i % 1000 == 0) {
+//         PROFILE_BACKWARD(6, output)
+//         PROFILE_BACKWARD(5, C5)
+//         PROFILE_BACKWARD(4, S4)
+//         PROFILE_BACKWARD(3, C3)
+//         PROFILE_BACKWARD(2, S2)
+//         PROFILE_BACKWARD(1, C1)
+//         PROFILE_BACKWARD(0, input)
+//       } else {
+//         Backward_output();
+//         Backward_C5();
+//         Backward_S4();
+//         Backward_C3();
+//         Backward_S2();
+//         Backward_C1();
+//         Backward_input();
+//       }
+// #else
+//       Backward_output();
+//       Backward_C5();
+//       Backward_S4();
+//       Backward_C3();
+//       Backward_S2();
+//       Backward_C1();
+//       Backward_input();
+// #endif
 
       if (i % 1000 == 0) {
         gettimeofday(&tsEnd, NULL);
@@ -124,7 +135,7 @@ bool CNN::train() {
         gettimeofday(&tsBegin, NULL);
       }
 
-      UpdateWeights();
+      // UpdateWeights();
 
       if (i % 1000 == 0) {
         gettimeofday(&tsEnd, NULL);
@@ -141,21 +152,22 @@ bool CNN::train() {
                profile_layer[1][6]);
       }
     } // 3 循环记忆训练
-    // 4 学习结果判别
-	std::chrono::high_resolution_clock::time_point t1, t2;
-	t1 = std::chrono::high_resolution_clock::now();
-    float accuracyRate = test();
-	t2 = std::chrono::high_resolution_clock::now();
-	std::chrono::duration<double> time_span =
+      // 4 学习结果判别
+    std::chrono::high_resolution_clock::time_point t1, t2;
+    t1 = std::chrono::high_resolution_clock::now();
+    float accuracyRate = 0.0;
+    // accuracyRate = test();
+    t2 = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> time_span =
         chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
     std::cout << ",test uses " << time_span.count() * 1e3
-			  << "ms, accuray rate: " << accuracyRate << std::endl;
+              << "ms, accuray rate: " << accuracyRate << std::endl;
     if (accuracyRate > accuracy_rate_CNN) {
-      saveModelFile("cnn.model");
+      // saveModelFile("cnn.model");
       std::cout << "generate cnn model" << std::endl;
       break;
     }
-    saveModelFile("cnn.model");
+    // saveModelFile("cnn.model");
     std::cout << "generate cnn model" << std::endl;
     gettimeofday(&ToltsEnd, NULL);
     t1Duration = 1000000L * (ToltsEnd.tv_sec - ToltsBegin.tv_sec) +
@@ -164,7 +176,7 @@ bool CNN::train() {
   }
 
   if (iter == num_epochs_CNN) {
-    saveModelFile("cnn.model");
+    // saveModelFile("cnn.model");
     std::cout << "generate cnn model" << std::endl;
   }
   return true;
@@ -179,7 +191,60 @@ void CNN::update_weights_bias(const float *delta, float *e_weight,
   }
 }
 
+// __global float *delta, __global float *error,
+//                             __global float *weight, float lr, float eps,
+//                             int len
+
 bool CNN::UpdateWeights() {
+#ifdef TARGET_GPU
+#define UPDATE(DELTA, E, W, L)                                                 \
+  {                                                                            \
+    cl_int status;                                                             \
+    cl_float lr = learning_rate_CNN;                                           \
+    cl_float eps = eps_CNN;                                                    \
+    cl_int len = L;                                                            \
+    status = clSetKernelArg(this->update_kernel, 0, sizeof(cl_mem), &DELTA);   \
+    CHECK_CL(status, "Can't assign args0");                                    \
+    status |= clSetKernelArg(this->update_kernel, 1, sizeof(cl_mem), &E);      \
+    CHECK_CL(status, "Can't assign args1");                                    \
+    status |= clSetKernelArg(this->update_kernel, 2, sizeof(cl_mem), &W);      \
+    CHECK_CL(status, "Can't assign args2");                                    \
+    status |= clSetKernelArg(this->update_kernel, 3, sizeof(cl_float), &lr);   \
+    CHECK_CL(status, "Can't assign args3");                                    \
+    status |= clSetKernelArg(this->update_kernel, 4, sizeof(cl_float), &eps);  \
+    CHECK_CL(status, "Can't assign args4");                                    \
+    status |= clSetKernelArg(this->update_kernel, 5, sizeof(cl_int), &len);    \
+    CHECK_CL(status, "Can't assign args5");                                    \
+                                                                               \
+    cl_event event;                                                            \
+    size_t dims[1] = {len};                                                    \
+    status = clEnqueueNDRangeKernel(this->cmdQueue, this->update_kernel, 1,    \
+                                    NULL, dims, NULL, 0, NULL, &event);        \
+    cl_event waits[] = {event};                                                \
+    clWaitForEvents(1, waits);                                                 \
+  }
+#define UPDATE_WEIGHT(NAME)                                                    \
+  UPDATE(this->device_delta_weight_##NAME, this->device_E_weight_##NAME,       \
+         this->device_weight_##NAME, len_weight_##NAME##_CNN)
+#define UPDATE_BIAS(NAME)                                                      \
+  UPDATE(this->device_delta_bias_##NAME, this->device_E_bias_##NAME,           \
+         this->device_bias_##NAME, len_bias_##NAME##_CNN)
+  UPDATE_WEIGHT(C1);
+  UPDATE_BIAS(C1);
+  UPDATE_WEIGHT(S2);
+  UPDATE_BIAS(S2);
+  UPDATE_WEIGHT(C3);
+  UPDATE_BIAS(C3);
+  UPDATE_WEIGHT(S4);
+  UPDATE_BIAS(S4);
+  UPDATE_WEIGHT(C5);
+  UPDATE_BIAS(C5);
+  UPDATE_WEIGHT(output);
+  UPDATE_BIAS(output);
+#undef UPDATE_WEIGHT
+#undef UPDATE_BIAS
+#undef UPDATE
+#else
   update_weights_bias(delta_weight_C1, E_weight_C1, weight_C1,
                       len_weight_C1_CNN);
   update_weights_bias(delta_bias_C1, E_bias_C1, bias_C1, len_bias_C1_CNN);
@@ -204,26 +269,40 @@ bool CNN::UpdateWeights() {
                       len_weight_output_CNN);
   update_weights_bias(delta_bias_output, E_bias_output, bias_output,
                       len_bias_output_CNN);
-
+#endif
   return true;
 }
 
 float CNN::test() {
   int count_accuracy = 0;
 
+#ifdef TARGET_GPU
+    this->device_data_pointer = this->device_data_input_test;
+    this->device_label_pointer = this->device_data_output_test;
+#endif
   for (int num = 0; num < num_patterns_test_CNN; num++) {
     data_single_image = data_input_test + num * num_neuron_input_CNN;
     data_single_label = data_output_test + num * num_neuron_output_CNN;
+#ifdef TARGET_GPU
+    image_offset = num * num_neuron_input_CNN;
+    label_offset = num * num_neuron_output_CNN;
+#endif
 
     memcpy(neuron_input, data_single_image,
            num_neuron_input_CNN * sizeof(float));
-
     Forward_C1();
     Forward_S2();
     Forward_C3();
     Forward_S4();
     Forward_C5();
     Forward_output();
+
+#ifdef TARGET_GPU
+  cl_int status;
+  status = clEnqueueReadBuffer(this->cmdQueue, this->device_neuron_output,
+                               CL_TRUE, 0, num_neuron_output_CNN * sizeof(float),
+                               this->neuron_output, 0, NULL, NULL);
+#endif
 
     int pos_t = -1;
     int pos_y = -2;

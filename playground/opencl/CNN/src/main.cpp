@@ -10,7 +10,7 @@
 #include <iostream>
 using namespace std;
 
-//#define TEST_PREDICT
+// #define TEST_PREDICT
 #ifdef  TEST_PREDICT
 #include <opencv2/core/core.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -18,6 +18,7 @@ using namespace std;
 int test_CNN_predict()
 {
 	CNN cnn2;
+	cnn2.init();
 	bool flag = cnn2.readModelFile("cnn.model");
 	if (!flag) {
 		std::cout << "read cnn model error" << std::endl;

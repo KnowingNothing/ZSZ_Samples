@@ -86,7 +86,7 @@ __kernel void  kernel_forward_c3(__global float *in,
 					  int in_num,
 					  int in_width,
                       int in_height,
-                      __global float  *tbl
+                      __global bool  *tbl
 					  )
 {
 	channel = get_global_id(0);
