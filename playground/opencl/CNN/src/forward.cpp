@@ -5,7 +5,7 @@
  *      Author: copper
  */
 #include "cnn.h"
-#ifndef TARGET_GPU
+#ifndef FORWARD_GPU
 #include <immintrin.h>
 #include <omp.h>
 
@@ -27,7 +27,7 @@ static const bool tbl[6][16] = {
 #define UNROLL_VECTORIZE_PARALLEL
 
 #if defined(UNROLL_VECTORIZE_PARALLEL)
-bool CNN::Forward_C1() {
+bool CNN::Forward_C1(bool train) {
 #pragma omp parallel for
   for (int channel = 0; channel < num_map_C1_CNN; channel++) {
     for (int y = 0; y < height_image_C1_CNN; y++) {
@@ -745,10 +745,15 @@ bool CNN::Forward_output() {
 
 using namespace std;
 
-bool CNN::Forward_C1() {
+bool CNN::Forward_C1(bool train) {
   cl_int status;
+  if (train) {
   status = clSetKernelArg(this->forward_C1_kernel, 0, sizeof(cl_mem),
-                          &this->device_data_pointer);
+                          &this->device_data_input_train);
+  } else {
+status = clSetKernelArg(this->forward_C1_kernel, 0, sizeof(cl_mem),
+                          &this->device_data_input_test);
+  }
   CHECK_CL(status, "Can't assign args0");
   status |= clSetKernelArg(this->forward_C1_kernel, 1, sizeof(cl_mem),
                            &this->device_weight_C1);
@@ -759,23 +764,24 @@ bool CNN::Forward_C1() {
   status |= clSetKernelArg(this->forward_C1_kernel, 3, sizeof(cl_mem),
                            &this->device_neuron_C1);
   CHECK_CL(status, "Can't assign args3");
-  status |= clSetKernelArg(this->forward_C1_kernel, 4, sizeof(cl_int),
-                           &this->image_offset);
+  status = clSetKernelArg(this->forward_C1_kernel, 4, sizeof(cl_int),
+                          &this->image_offset);
   CHECK_CL(status, "Can't assign args4");
 
   cl_event event;
-//   std::cout << "forward C1 global: "
-//   			<< this->forward_C1_kernel_global[0] << ","
-//             << this->forward_C1_kernel_global[1] << ","
-//             << this->forward_C1_kernel_global[2] << "\n"
-//             << this->forward_kernel_dims[0] << "\n"
-//             << std::flush;
+  //   std::cout << "forward C1 global: "
+  //   			<< this->forward_C1_kernel_global[0] << ","
+  //             << this->forward_C1_kernel_global[1] << ","
+  //             << this->forward_C1_kernel_global[2] << "\n"
+  //             << this->forward_kernel_dims[0] << "\n"
+  //             << std::flush;
   status = clEnqueueNDRangeKernel(
       this->cmdQueue, this->forward_C1_kernel, this->forward_kernel_dims[0],
       NULL, this->forward_C1_kernel_global, this->forward_C1_kernel_local, 0,
       NULL, &event);
   cl_event waits[] = {event};
-  clWaitForEvents(1, waits);
+  // clWaitForEvents(1, waits);
+  clReleaseEvent(event);
   return true;
 }
 
@@ -795,18 +801,19 @@ bool CNN::Forward_S2() {
   CHECK_CL(status, "Can't assign args3");
 
   cl_event event;
-//   std::cout << "forward S2 global: "
-//   			<< this->forward_S2_kernel_global[0] << ","
-//             << this->forward_S2_kernel_global[1] << ","
-//             << this->forward_S2_kernel_global[2] << "\n"
-//             << this->forward_kernel_dims[1] << "\n"
-//             << std::flush;
+  //   std::cout << "forward S2 global: "
+  //   			<< this->forward_S2_kernel_global[0] << ","
+  //             << this->forward_S2_kernel_global[1] << ","
+  //             << this->forward_S2_kernel_global[2] << "\n"
+  //             << this->forward_kernel_dims[1] << "\n"
+  //             << std::flush;
   status = clEnqueueNDRangeKernel(
       this->cmdQueue, this->forward_S2_kernel, this->forward_kernel_dims[1],
       NULL, this->forward_S2_kernel_global, this->forward_S2_kernel_local, 0,
       NULL, &event);
   cl_event waits[] = {event};
-  clWaitForEvents(1, waits);
+  // clWaitForEvents(1, waits);
+  clReleaseEvent(event);
   return true;
 }
 
@@ -829,18 +836,19 @@ bool CNN::Forward_C3() {
   CHECK_CL(status, "Can't assign args4");
 
   cl_event event;
-//   std::cout << "forward C3 global: "
-//   			<< this->forward_C3_kernel_global[0] << ","
-//             << this->forward_C3_kernel_global[1] << ","
-//             << this->forward_C3_kernel_global[2] << "\n"
-//             << this->forward_kernel_dims[2] << "\n"
-//             << std::flush;
+  //   std::cout << "forward C3 global: "
+  //   			<< this->forward_C3_kernel_global[0] << ","
+  //             << this->forward_C3_kernel_global[1] << ","
+  //             << this->forward_C3_kernel_global[2] << "\n"
+  //             << this->forward_kernel_dims[2] << "\n"
+  //             << std::flush;
   status = clEnqueueNDRangeKernel(
       this->cmdQueue, this->forward_C3_kernel, this->forward_kernel_dims[2],
       NULL, this->forward_C3_kernel_global, this->forward_C3_kernel_local, 0,
       NULL, &event);
   cl_event waits[] = {event};
-  clWaitForEvents(1, waits);
+  // clWaitForEvents(1, waits);
+  clReleaseEvent(event);
   return true;
 }
 
@@ -860,18 +868,19 @@ bool CNN::Forward_S4() {
   CHECK_CL(status, "Can't assign args3");
 
   cl_event event;
-//   std::cout << "forward S4 global: "
-//   			<< this->forward_S4_kernel_global[0] << ","
-//             << this->forward_S4_kernel_global[1] << ","
-//             << this->forward_S4_kernel_global[2] << "\n"
-//             << this->forward_kernel_dims[3] << "\n"
-//             << std::flush;
+  //   std::cout << "forward S4 global: "
+  //   			<< this->forward_S4_kernel_global[0] << ","
+  //             << this->forward_S4_kernel_global[1] << ","
+  //             << this->forward_S4_kernel_global[2] << "\n"
+  //             << this->forward_kernel_dims[3] << "\n"
+  //             << std::flush;
   status = clEnqueueNDRangeKernel(
       this->cmdQueue, this->forward_S4_kernel, this->forward_kernel_dims[3],
       NULL, this->forward_S4_kernel_global, this->forward_S4_kernel_local, 0,
       NULL, &event);
   cl_event waits[] = {event};
-  clWaitForEvents(1, waits);
+  // clWaitForEvents(1, waits);
+  clReleaseEvent(event);
   return true;
 }
 
@@ -891,18 +900,19 @@ bool CNN::Forward_C5() {
   CHECK_CL(status, "Can't assign args3");
 
   cl_event event;
-//   std::cout << "forward C5 global: "
-//   			<< this->forward_C5_kernel_global[0] << ","
-//             << this->forward_C5_kernel_global[1] << ","
-//             << this->forward_C5_kernel_global[2] << "\n"
-//             << this->forward_kernel_dims[4] << "\n"
-//             << std::flush;
+  //   std::cout << "forward C5 global: "
+  //   			<< this->forward_C5_kernel_global[0] << ","
+  //             << this->forward_C5_kernel_global[1] << ","
+  //             << this->forward_C5_kernel_global[2] << "\n"
+  //             << this->forward_kernel_dims[4] << "\n"
+  //             << std::flush;
   status = clEnqueueNDRangeKernel(
       this->cmdQueue, this->forward_C5_kernel, this->forward_kernel_dims[4],
       NULL, this->forward_C5_kernel_global, this->forward_C5_kernel_local, 0,
       NULL, &event);
   cl_event waits[] = {event};
-  clWaitForEvents(1, waits);
+  // clWaitForEvents(1, waits);
+  clReleaseEvent(event);
   return true;
 }
 
@@ -922,16 +932,17 @@ bool CNN::Forward_output() {
   CHECK_CL(status, "Can't assign args3");
 
   cl_event event;
-//   std::cout << "forward output global: "
-//             << this->forward_output_kernel_global[0] << "\n"
-//             << this->forward_kernel_dims[5] << "\n"
-//             << std::flush;
+  //   std::cout << "forward output global: "
+  //             << this->forward_output_kernel_global[0] << "\n"
+  //             << this->forward_kernel_dims[5] << "\n"
+  //             << std::flush;
   status = clEnqueueNDRangeKernel(
       this->cmdQueue, this->forward_output_kernel, this->forward_kernel_dims[5],
       NULL, this->forward_output_kernel_global,
       this->forward_output_kernel_local, 0, NULL, &event);
   cl_event waits[] = {event};
   clWaitForEvents(1, waits);
+  clReleaseEvent(event);
   return true;
 }
 #endif

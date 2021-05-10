@@ -5,15 +5,14 @@
  *      Author: copper
  */
 #include "cnn.h"
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 #define CL_TARGET_OPENCL_VERSION 200
 #include <CL/cl.h>
-#define GPU_OPT_LOCAL_MEM
 #endif
 
 using namespace std;
 
-#ifndef TARGET_GPU
+#ifndef BACKWARD_GPU
 // connection table [Y.Lecun, 1998 Table.1]
 #define O true
 #define X false
@@ -317,7 +316,8 @@ bool CNN::Backward_output() {
       this->backward_output_kernel_local, 0, NULL, &event);
   CHECK_CL(status, "");
   cl_event waits[] = {event};
-  clWaitForEvents(1, waits);
+  // clWaitForEvents(1, waits);
+  clReleaseEvent(event);
   return true;
 }
 
@@ -333,7 +333,7 @@ bool CNN::Backward_C5() {
                            &this->device_weight_output);
   CHECK_CL(status, "Can't assign args2");
   status |= clSetKernelArg(this->backward_C5_kernel, 3, sizeof(cl_mem),
-                           &this->device_neuron_C5);
+                           &this->device_delta_neuron_C5);
   CHECK_CL(status, "Can't assign args3");
   status |= clSetKernelArg(this->backward_C5_kernel, 4, sizeof(cl_mem),
                            &this->device_delta_weight_output);
@@ -349,7 +349,8 @@ bool CNN::Backward_C5() {
       NULL, &event);
   CHECK_CL(status, "");
   cl_event waits[] = {event};
-  clWaitForEvents(1, waits);
+  // clWaitForEvents(1, waits);
+  clReleaseEvent(event);
   return true;
 }
 
@@ -399,6 +400,8 @@ bool CNN::Backward_S4() {
 
   cl_event waits[] = {event1, event2};
   clWaitForEvents(2, waits);
+  clReleaseEvent(event1);
+  clReleaseEvent(event2);
   return true;
 }
 
@@ -448,6 +451,8 @@ bool CNN::Backward_C3() {
 
   cl_event waits[] = {event1, event2};
   clWaitForEvents(2, waits);
+  clReleaseEvent(event1);
+  clReleaseEvent(event2);
   return true;
 }
 
@@ -500,6 +505,8 @@ bool CNN::Backward_S2() {
 
   cl_event waits[] = {event1, event2};
   clWaitForEvents(2, waits);
+  clReleaseEvent(event1);
+  clReleaseEvent(event2);
   return true;
 }
 
@@ -549,6 +556,8 @@ bool CNN::Backward_C1() {
 
   cl_event waits[] = {event1, event2};
   clWaitForEvents(2, waits);
+  clReleaseEvent(event1);
+  clReleaseEvent(event2);
   return true;
 }
 
@@ -580,6 +589,8 @@ bool CNN::Backward_input() {
 
   cl_event waits[] = {event1};
   clWaitForEvents(1, waits);
+  clReleaseEvent(event1);
   return true;
 }
 #endif
+

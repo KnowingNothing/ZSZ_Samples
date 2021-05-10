@@ -28,7 +28,7 @@ int CNN::predict(const unsigned char *data, int width, int height) {
   // std::cout << std::endl;
 
   data_single_image = &tmp[0];
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   cl_int status;
   this->device_data_pointer = clCreateBuffer(
       this->context, CL_MEM_READ_ONLY,
@@ -42,7 +42,7 @@ int CNN::predict(const unsigned char *data, int width, int height) {
   CHECK_CL(status, "");
 #endif
   Forward_C1();
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 //   status = clEnqueueReadBuffer(this->cmdQueue, this->device_neuron_C1,
 //                                CL_TRUE, 0, num_neuron_C1_CNN * sizeof(float),
 //                                this->neuron_C1, 0, NULL, NULL);
@@ -54,7 +54,7 @@ int CNN::predict(const unsigned char *data, int width, int height) {
 //   std::cout << "\n";
 #endif
   Forward_S2();
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 //   status = clEnqueueReadBuffer(this->cmdQueue, this->device_neuron_S2,
 //                                CL_TRUE, 0, num_neuron_S2_CNN * sizeof(float),
 //                                this->neuron_S2, 0, NULL, NULL);
@@ -66,7 +66,7 @@ int CNN::predict(const unsigned char *data, int width, int height) {
 //   std::cout << "\n";
 #endif
   Forward_C3();
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 //   status = clEnqueueReadBuffer(this->cmdQueue, this->device_neuron_C3,
 //                                CL_TRUE, 0, num_neuron_C3_CNN * sizeof(float),
 //                                this->neuron_C3, 0, NULL, NULL);
@@ -78,7 +78,7 @@ int CNN::predict(const unsigned char *data, int width, int height) {
 //   std::cout << "\n";
 #endif
   Forward_S4();
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 //   status = clEnqueueReadBuffer(this->cmdQueue, this->device_neuron_S4,
 //                                CL_TRUE, 0, num_neuron_S4_CNN * sizeof(float),
 //                                this->neuron_S4, 0, NULL, NULL);
@@ -90,7 +90,7 @@ int CNN::predict(const unsigned char *data, int width, int height) {
 //   std::cout << "\n";
 #endif
   Forward_C5();
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 //   status = clEnqueueReadBuffer(this->cmdQueue, this->device_neuron_C5,
 //                                CL_TRUE, 0, num_neuron_C5_CNN * sizeof(float),
 //                                this->neuron_C5, 0, NULL, NULL);
@@ -103,7 +103,7 @@ int CNN::predict(const unsigned char *data, int width, int height) {
 #endif
   Forward_output();
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   status = clEnqueueReadBuffer(this->cmdQueue, this->device_neuron_output,
                                CL_TRUE, 0, num_neuron_output_CNN * sizeof(float),
                                this->neuron_output, 0, NULL, NULL);

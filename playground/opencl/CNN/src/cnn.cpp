@@ -2,7 +2,7 @@
 
 using namespace std;
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 std::string status2str(cl_int status) {
   if (status == CL_SUCCESS) {
     return "CL_SUCCESS";
@@ -42,7 +42,7 @@ std::string get_device_info(cl_device_id device, cl_device_info params) {
 }
 #endif
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 CNN::CNN(int platform_id, int device_id)
 #else
 CNN::CNN()
@@ -58,7 +58,7 @@ CNN::CNN()
   E_bias_C5 = NULL;
   E_weight_output = NULL;
   E_bias_output = NULL;
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   this->platform_id = platform_id;
   this->device_id = device_id;
 #endif
@@ -102,7 +102,7 @@ void CNN::release() {
     E_bias_output = NULL;
   }
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   for (int i = 0; i < 6; ++i) {
     if (forward_source[i]) {
       delete[] forward_source[i];

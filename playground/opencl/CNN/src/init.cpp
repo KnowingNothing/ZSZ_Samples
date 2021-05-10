@@ -44,7 +44,7 @@ void CNN::init() {
   //读取MNIST数据
   getSrcData();
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   std::cout << "Getting device...\n" << std::flush;
   cl_uint num_platforms;
   CHECK_CL(clGetPlatformIDs(0, NULL, &num_platforms), "Can't get platform ids");
@@ -77,8 +77,6 @@ void CNN::init() {
   this->forward_source[0] = load_kernel_source(this->forward_source_C1_name);
   this->forward_source[1] = load_kernel_source(this->forward_source_S2_name);
   this->forward_source[2] = load_kernel_source(this->forward_source_C3_name);
-  assert(this->forward_source[0] != NULL);
-  std::cout << this->forward_source[2];
   this->forward_source[3] = load_kernel_source(this->forward_source_S4_name);
   this->forward_source[4] = load_kernel_source(this->forward_source_C5_name);
   this->forward_source[5] =
@@ -112,10 +110,10 @@ void CNN::init() {
   this->context =
       clCreateContext(NULL, num_devices, devices, NULL, NULL, &status);
 
-  cl_command_queue_properties properties[]{CL_QUEUE_PROPERTIES,
-                                           CL_QUEUE_PROFILING_ENABLE, 0};
+//   cl_command_queue_properties properties[]{CL_QUEUE_PROPERTIES,
+//                                            CL_QUEUE_PROFILING_ENABLE, 0};
   this->cmdQueue = clCreateCommandQueueWithProperties(
-      this->context, this->device, properties, &status);
+      this->context, this->device, NULL, &status);
 
   std::cout << "Creating buffers...\n" << std::flush;
   /*
@@ -383,7 +381,8 @@ void CNN::init() {
   BUILD_FORWARD_PROGRAM(S4, 3);
   BUILD_FORWARD_PROGRAM(C5, 4);
   BUILD_FORWARD_PROGRAM(output, 5);
-
+  
+  std::cout << "Build backward program...\n" << std::flush;
   BUILD_BACKWARD_PROGRAM(input_weight, 0);
   BUILD_BACKWARD_PROGRAM(C1_weight, 1);
   BUILD_BACKWARD_PROGRAM(S2_weight, 2);
@@ -541,7 +540,7 @@ bool CNN::initWeightThreshold() {
   return true;
 }
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 char *CNN::load_kernel_source(std::string filename) {
   std::ifstream kernel_src(filename, std::ifstream::in);
   if (!kernel_src.good()) {

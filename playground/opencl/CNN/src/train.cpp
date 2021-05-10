@@ -3,7 +3,7 @@
 
 using namespace std;
 
-// #define PROFILE_LAYER
+#define PROFILE_LAYER
 
 struct timeval tsBegin, tsEnd, ToltsBegin, ToltsEnd;
 long t1Duration;
@@ -39,9 +39,9 @@ bool CNN::train() {
     profile_layer[1][N] = time_span.count() * 1e3;                             \
   }
 
-#ifdef TARGET_GPU
-    this->device_data_pointer = this->device_data_input_train;
-    this->device_label_pointer = this->device_data_output_train;
+#ifdef FORWARD_GPU
+  this->device_data_pointer = this->device_data_input_train;
+  this->device_label_pointer = this->device_data_output_train;
 #endif
   for (iter = 0; iter < num_epochs_CNN; iter++) {
     std::cout << "epoch: " << iter + 1 << std::endl;
@@ -54,7 +54,7 @@ bool CNN::train() {
       // 1 输入模式顺传播
       data_single_image = data_input_train + i * num_neuron_input_CNN;
       data_single_label = data_output_train + i * num_neuron_output_CNN;
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
       image_offset = i * num_neuron_input_CNN;
       label_offset = i * num_neuron_output_CNN;
 #endif
@@ -80,12 +80,12 @@ bool CNN::train() {
         Forward_output();
       }
 #else
-      // Forward_C1();
-      // Forward_S2();
-      // Forward_C3();
-      // Forward_S4();
-      // Forward_C5();
-      // Forward_output();
+      Forward_C1();
+      Forward_S2();
+      Forward_C3();
+      Forward_S4();
+      Forward_C5();
+      Forward_output();
 #endif
 
       if (i % 1000 == 0) {
@@ -96,36 +96,52 @@ bool CNN::train() {
         gettimeofday(&tsBegin, NULL);
       }
 
-      continue;
+// 2 输出误差逆传播
+#ifndef BACKWARD_GPU
+#ifdef FORWARD_GPU
+#define ENQUE_BUFFER(NAME, LEN)                                                \
+  clEnqueueReadBuffer(this->cmdQueue, this->device_##NAME, CL_TRUE, 0,         \
+                      LEN * sizeof(float), NAME, 0, NULL, NULL);
 
-      // 2 输出误差逆传播
-// #ifdef PROFILE_LAYER
-//       if (i % 1000 == 0) {
-//         PROFILE_BACKWARD(6, output)
-//         PROFILE_BACKWARD(5, C5)
-//         PROFILE_BACKWARD(4, S4)
-//         PROFILE_BACKWARD(3, C3)
-//         PROFILE_BACKWARD(2, S2)
-//         PROFILE_BACKWARD(1, C1)
-//         PROFILE_BACKWARD(0, input)
-//       } else {
-//         Backward_output();
-//         Backward_C5();
-//         Backward_S4();
-//         Backward_C3();
-//         Backward_S2();
-//         Backward_C1();
-//         Backward_input();
-//       }
-// #else
-//       Backward_output();
-//       Backward_C5();
-//       Backward_S4();
-//       Backward_C3();
-//       Backward_S2();
-//       Backward_C1();
-//       Backward_input();
-// #endif
+      ENQUE_BUFFER(neuron_C1, num_neuron_C1_CNN);
+      ENQUE_BUFFER(neuron_S2, num_neuron_S2_CNN);
+      ENQUE_BUFFER(neuron_C3, num_neuron_C3_CNN);
+      ENQUE_BUFFER(neuron_S4, num_neuron_S4_CNN);
+      ENQUE_BUFFER(neuron_C5, num_neuron_C5_CNN);
+      ENQUE_BUFFER(neuron_output, num_neuron_output_CNN);
+
+#undef ENQUE_BUFFER
+#endif
+#endif
+
+#ifdef PROFILE_LAYER
+      if (i % 1000 == 0) {
+        PROFILE_BACKWARD(6, output)
+        PROFILE_BACKWARD(5, C5)
+        PROFILE_BACKWARD(4, S4)
+        PROFILE_BACKWARD(3, C3)
+        PROFILE_BACKWARD(2, S2)
+        PROFILE_BACKWARD(1, C1)
+        PROFILE_BACKWARD(0, input)
+      } else {
+        Backward_output();
+        Backward_C5();
+        Backward_S4();
+        Backward_C3();
+        Backward_S2();
+        Backward_C1();
+        Backward_input();
+      }
+#else
+      Backward_output();
+      Backward_C5();
+      Backward_S4();
+      Backward_C3();
+      Backward_S2();
+      Backward_C1();
+      Backward_input();
+
+#endif
 
       if (i % 1000 == 0) {
         gettimeofday(&tsEnd, NULL);
@@ -135,7 +151,51 @@ bool CNN::train() {
         gettimeofday(&tsBegin, NULL);
       }
 
-      // UpdateWeights();
+#ifdef BACKWARD_GPU
+#ifndef UPDATE_GPU
+#define ENQUE_BUFFER(NAME, LEN)                                                \
+  clEnqueueReadBuffer(this->cmdQueue, this->device_##NAME, CL_TRUE, 0,         \
+                      LEN * sizeof(float), NAME, 0, NULL, NULL);
+
+      ENQUE_BUFFER(delta_weight_C1, len_weight_C1_CNN);
+      ENQUE_BUFFER(delta_bias_C1, len_bias_C1_CNN);
+      ENQUE_BUFFER(delta_weight_S2, len_weight_S2_CNN);
+      ENQUE_BUFFER(delta_bias_S2, len_bias_S2_CNN);
+      ENQUE_BUFFER(delta_weight_C3, len_weight_C3_CNN);
+      ENQUE_BUFFER(delta_bias_C3, len_bias_C3_CNN);
+      ENQUE_BUFFER(delta_weight_S4, len_weight_S4_CNN);
+      ENQUE_BUFFER(delta_bias_S4, len_bias_S2_CNN);
+      ENQUE_BUFFER(delta_weight_C5, len_weight_C5_CNN);
+      ENQUE_BUFFER(delta_bias_C5, len_bias_C5_CNN);
+      ENQUE_BUFFER(delta_weight_output, len_weight_output_CNN);
+      ENQUE_BUFFER(delta_bias_output, len_bias_output_CNN);
+
+#undef ENQUE_BUFFER
+#endif
+#endif
+
+      UpdateWeights();
+#ifndef UPDATE_GPU
+#ifdef FORWARD_GPU
+#define ENQUE_BUFFER(NAME, LEN)                                                \
+  clEnqueueWriteBuffer(this->cmdQueue, this->device_##NAME, CL_TRUE, 0,        \
+                       LEN * sizeof(float), NAME, 0, NULL, NULL);
+
+      ENQUE_BUFFER(weight_C1, len_weight_C1_CNN);
+      ENQUE_BUFFER(bias_C1, len_bias_C1_CNN);
+      ENQUE_BUFFER(weight_S2, len_weight_S2_CNN);
+      ENQUE_BUFFER(bias_S2, len_bias_S2_CNN);
+      ENQUE_BUFFER(weight_C3, len_weight_C3_CNN);
+      ENQUE_BUFFER(bias_C3, len_bias_C3_CNN);
+      ENQUE_BUFFER(weight_S4, len_weight_S4_CNN);
+      ENQUE_BUFFER(bias_S4, len_bias_S2_CNN);
+      ENQUE_BUFFER(weight_C5, len_weight_C5_CNN);
+      ENQUE_BUFFER(bias_C5, len_bias_C5_CNN);
+      ENQUE_BUFFER(weight_output, len_weight_output_CNN);
+      ENQUE_BUFFER(bias_output, len_bias_output_CNN);
+#undef ENQUE_BUFFER
+#endif
+#endif
 
       if (i % 1000 == 0) {
         gettimeofday(&tsEnd, NULL);
@@ -156,18 +216,18 @@ bool CNN::train() {
     std::chrono::high_resolution_clock::time_point t1, t2;
     t1 = std::chrono::high_resolution_clock::now();
     float accuracyRate = 0.0;
-    // accuracyRate = test();
+    accuracyRate = test();
     t2 = std::chrono::high_resolution_clock::now();
     std::chrono::duration<double> time_span =
         chrono::duration_cast<std::chrono::duration<double>>(t2 - t1);
     std::cout << ",test uses " << time_span.count() * 1e3
               << "ms, accuray rate: " << accuracyRate << std::endl;
     if (accuracyRate > accuracy_rate_CNN) {
-      // saveModelFile("cnn.model");
+      saveModelFile("cnn.model");
       std::cout << "generate cnn model" << std::endl;
       break;
     }
-    // saveModelFile("cnn.model");
+    saveModelFile("cnn.model");
     std::cout << "generate cnn model" << std::endl;
     gettimeofday(&ToltsEnd, NULL);
     t1Duration = 1000000L * (ToltsEnd.tv_sec - ToltsBegin.tv_sec) +
@@ -176,7 +236,7 @@ bool CNN::train() {
   }
 
   if (iter == num_epochs_CNN) {
-    // saveModelFile("cnn.model");
+    saveModelFile("cnn.model");
     std::cout << "generate cnn model" << std::endl;
   }
   return true;
@@ -191,12 +251,8 @@ void CNN::update_weights_bias(const float *delta, float *e_weight,
   }
 }
 
-// __global float *delta, __global float *error,
-//                             __global float *weight, float lr, float eps,
-//                             int len
-
 bool CNN::UpdateWeights() {
-#ifdef TARGET_GPU
+#ifdef UPDATE_GPU
 #define UPDATE(DELTA, E, W, L)                                                 \
   {                                                                            \
     cl_int status;                                                             \
@@ -222,6 +278,7 @@ bool CNN::UpdateWeights() {
                                     NULL, dims, NULL, 0, NULL, &event);        \
     cl_event waits[] = {event};                                                \
     clWaitForEvents(1, waits);                                                 \
+    clReleaseEvent(event);                                                     \
   }
 #define UPDATE_WEIGHT(NAME)                                                    \
   UPDATE(this->device_delta_weight_##NAME, this->device_E_weight_##NAME,       \
@@ -276,32 +333,33 @@ bool CNN::UpdateWeights() {
 float CNN::test() {
   int count_accuracy = 0;
 
-#ifdef TARGET_GPU
-    this->device_data_pointer = this->device_data_input_test;
-    this->device_label_pointer = this->device_data_output_test;
+#ifdef FORWARD_GPU
+  this->device_data_pointer = this->device_data_input_test;
+  this->device_label_pointer = this->device_data_output_test;
 #endif
   for (int num = 0; num < num_patterns_test_CNN; num++) {
     data_single_image = data_input_test + num * num_neuron_input_CNN;
     data_single_label = data_output_test + num * num_neuron_output_CNN;
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
     image_offset = num * num_neuron_input_CNN;
     label_offset = num * num_neuron_output_CNN;
 #endif
 
     memcpy(neuron_input, data_single_image,
            num_neuron_input_CNN * sizeof(float));
-    Forward_C1();
+    Forward_C1(false);
     Forward_S2();
     Forward_C3();
     Forward_S4();
     Forward_C5();
     Forward_output();
 
-#ifdef TARGET_GPU
-  cl_int status;
-  status = clEnqueueReadBuffer(this->cmdQueue, this->device_neuron_output,
-                               CL_TRUE, 0, num_neuron_output_CNN * sizeof(float),
-                               this->neuron_output, 0, NULL, NULL);
+#ifdef FORWARD_GPU
+    cl_int status;
+    status =
+        clEnqueueReadBuffer(this->cmdQueue, this->device_neuron_output, CL_TRUE,
+                            0, num_neuron_output_CNN * sizeof(float),
+                            this->neuron_output, 0, NULL, NULL);
 #endif
 
     int pos_t = -1;

@@ -23,15 +23,17 @@
 #include <unordered_map>
 #include <vector>
 
-#define TARGET_GPU
+#define FORWARD_GPU
+#define BACKWARD_GPU
+// #define UPDATE_GPU
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 #define CL_TARGET_OPENCL_VERSION 200
 #include <CL/cl.h>
 #define GPU_OPT_LOCAL_MEM
 #endif
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
 std::string status2str(cl_int status);
 
 #define CHECK_CL(status, str)                                                  \
@@ -111,7 +113,7 @@ std::string get_device_info(cl_device_id device, cl_device_info params);
 //
 class CNN {
 public:
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   CNN(int platform_id = 0, int device_id = 0);
 #else
   CNN();
@@ -160,7 +162,7 @@ protected:
   //
   int get_index(int x, int y, int channel, int width, int height, int depth);
 
-  bool Forward_C1(); //前向传播
+  bool Forward_C1(bool train=true); //前向传播
   bool Forward_S2();
   bool Forward_C3();
   bool Forward_S4();
@@ -184,7 +186,7 @@ protected:
   //
   bool bmp8(const float *data, int width, int height, const char *name);
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   char* load_kernel_source(std::string filename);
 #endif
 
@@ -251,7 +253,7 @@ private:
   float delta_weight_output[len_weight_output_CNN];
   float delta_bias_output[len_bias_output_CNN];
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   int device_id = 0;
   int platform_id = 0;
   cl_platform_id platform;
@@ -259,9 +261,9 @@ private:
   cl_context context = NULL;
   cl_command_queue cmdQueue;
 #ifdef GPU_OPT_LOCAL_MEM
-  const char *forward_source_C1_name = "kernel/kernel_forward_C1.cl";
-  const char *forward_source_S2_name = "kernel/kernel_forward_S2.cl";
-  const char *forward_source_C3_name = "kernel/kernel_forward_C3.cl";
+  const char *forward_source_C1_name = "kernel/kernel_forward_C1_local_mem.cl";
+  const char *forward_source_S2_name = "kernel/kernel_forward_S2_local_mem.cl";
+  const char *forward_source_C3_name = "kernel/kernel_forward_C3_local_mem.cl";
   const char *forward_source_S4_name = "kernel/kernel_forward_S4.cl";
   const char *forward_source_C5_name = "kernel/kernel_forward_C5.cl";
   const char *forward_source_output_name = "kernel/kernel_forward_output.cl";
@@ -271,6 +273,12 @@ private:
   const char *backward_source_S2_weight_name = "kernel/kernel_backward_S2_weight.cl";
   const char *backward_source_C3_input_name = "kernel/kernel_backward_C3_input.cl";
   const char *backward_source_C3_weight_name = "kernel/kernel_backward_C3_weight.cl";
+  // const char *backward_source_C1_input_name = "kernel/kernel_backward_C1_input_tiling.cl";
+  // const char *backward_source_C1_weight_name = "kernel/kernel_backward_C1_weight_tiling.cl";
+  // const char *backward_source_S2_input_name = "kernel/kernel_backward_S2_input_tiling.cl";
+  // const char *backward_source_S2_weight_name = "kernel/kernel_backward_S2_weight_tiling.cl";
+  // const char *backward_source_C3_input_name = "kernel/kernel_backward_C3_input_tiling.cl";
+  // const char *backward_source_C3_weight_name = "kernel/kernel_backward_C3_weight_tiling.cl";
   const char *backward_source_S4_input_name = "kernel/kernel_backward_S4_input.cl";
   const char *backward_source_S4_weight_name = "kernel/kernel_backward_S4_weight.cl";
   const char *backward_source_C5_name = "kernel/kernel_backward_C5.cl";
@@ -347,29 +355,31 @@ private:
                                  3, 1, 3, 2, 1, 1};
   int update_kernel_dim = 1;
 
-  size_t forward_C1_kernel_global[3] = {6, 28, 28};
-  size_t forward_S2_kernel_global[3] = {6, 14, 14};
-  size_t forward_C3_kernel_global[3] = {16, 10, 10};
-  size_t forward_S4_kernel_global[3] = {16, 5, 5};
-  size_t forward_C5_kernel_global[3] = {120, 1, 1};
+  size_t forward_C1_kernel_global[3] = {28, 28, 6};
+  size_t forward_S2_kernel_global[3] = {14, 14, 6};
+  size_t forward_C3_kernel_global[3] = {10, 10, 16};
+  size_t forward_S4_kernel_global[3] = {5, 5, 16};
+  size_t forward_C5_kernel_global[3] = {1, 1, 120};
   size_t forward_output_kernel_global[1] = {10};
 
-  size_t* forward_C1_kernel_local = NULL;
-  size_t* forward_S2_kernel_local = NULL;
-  size_t* forward_C3_kernel_local = NULL;
+  size_t forward_C1_kernel_local[3] = {7, 7, 1};
+  size_t forward_S2_kernel_local[3] = {2, 2, 1};
+  size_t forward_C3_kernel_local[3] = {2, 2, 1};
+  // size_t forward_S4_kernel_local[3] = {1, 1, 1};
+  // size_t forward_C5_kernel_local[3] = {1, 1, 2};
   size_t* forward_S4_kernel_local = NULL;
   size_t* forward_C5_kernel_local = NULL;
   size_t* forward_output_kernel_local = NULL;
 
-  size_t backward_input_weight_kernel_global[2] = {6, 1};
-  size_t backward_C1_input_kernel_global[3] = {6, 28, 28};
+  size_t backward_input_weight_kernel_global[2] = {1, 6};
+  size_t backward_C1_input_kernel_global[3] = {28, 28, 6};
   size_t backward_C1_weight_kernel_global[3] = {6};
-  size_t backward_S2_input_kernel_global[3] = {6, 14, 14};
-  size_t backward_S2_weight_kernel_global[2] = {16, 6};
-  size_t backward_C3_input_kernel_global[3] = {16, 10, 10};
+  size_t backward_S2_input_kernel_global[3] = {14, 14, 6};
+  size_t backward_S2_weight_kernel_global[2] = {6, 16};
+  size_t backward_C3_input_kernel_global[3] = {10, 10, 16};
   size_t backward_C3_weight_kernel_global[1] = {16};
-  size_t backward_S4_input_kernel_global[3] = {16, 5, 5};
-  size_t backward_S4_weight_kernel_global[2] = {120, 16};
+  size_t backward_S4_input_kernel_global[3] = {5, 5, 16};
+  size_t backward_S4_weight_kernel_global[2] = {16, 120};
   size_t backward_C5_kernel_global[1] = {120};
   size_t backward_output_kernel_global[1] = {10};
 
@@ -384,6 +394,18 @@ private:
   size_t *backward_S4_weight_kernel_local = NULL;
   size_t *backward_C5_kernel_local = NULL;
   size_t *backward_output_kernel_local = NULL;
+
+  // size_t *backward_input_weight_kernel_local = NULL;
+  // size_t backward_C1_input_kernel_local[3] = {2, 2, 2};
+  // size_t *backward_C1_weight_kernel_local = NULL;
+  // size_t backward_S2_input_kernel_local[3] = {2, 2, 2};
+  // size_t backward_S2_weight_kernel_local[2] = {2, 2};
+  // size_t backward_C3_input_kernel_local[3] = {2, 2, 2};
+  // size_t *backward_C3_weight_kernel_local = NULL;
+  // size_t *backward_S4_input_kernel_local = NULL;
+  // size_t *backward_S4_weight_kernel_local = NULL;
+  // size_t *backward_C5_kernel_local = NULL;
+  // size_t *backward_output_kernel_local = NULL;
 #else
   int forward_kernel_dims[6] = {3, 3, 3, 3, 3, 1};
   // {input_weight, C1_input, C1_weight, S2_input, S2_weight,
@@ -406,15 +428,15 @@ private:
   size_t* forward_C5_kernel_local = NULL;
   size_t* forward_output_kernel_local = NULL;
 
-  size_t backward_input_weight_kernel_global[2] = {6, 1};
-  size_t backward_C1_input_kernel_global[3] = {6, 28, 28};
+  size_t backward_input_weight_kernel_global[2] = {1, 6};
+  size_t backward_C1_input_kernel_global[3] = {28, 28, 6};
   size_t backward_C1_weight_kernel_global[3] = {6};
-  size_t backward_S2_input_kernel_global[3] = {6, 14, 14};
-  size_t backward_S2_weight_kernel_global[2] = {16, 6};
-  size_t backward_C3_input_kernel_global[3] = {16, 10, 10};
+  size_t backward_S2_input_kernel_global[3] = {14, 14, 6};
+  size_t backward_S2_weight_kernel_global[2] = {6, 16};
+  size_t backward_C3_input_kernel_global[3] = {10, 10, 16};
   size_t backward_C3_weight_kernel_global[1] = {16};
-  size_t backward_S4_input_kernel_global[3] = {16, 5, 5};
-  size_t backward_S4_weight_kernel_global[2] = {120, 16};
+  size_t backward_S4_input_kernel_global[3] = {5, 5, 16};
+  size_t backward_S4_weight_kernel_global[2] = {16, 120};
   size_t backward_C5_kernel_global[1] = {120};
   size_t backward_output_kernel_global[1] = {10};
 

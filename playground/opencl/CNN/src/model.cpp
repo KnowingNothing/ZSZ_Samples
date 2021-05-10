@@ -63,7 +63,7 @@ bool CNN::saveModelFile(const char *name) {
   int num_neuron_C5 = num_neuron_C5_CNN;
   int num_neuron_output = num_neuron_output_CNN;
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   cl_int status;
 #define ENQUE_BUFFER(NAME, LEN)                                                \
   status = clEnqueueReadBuffer(this->cmdQueue, this->device_##NAME, CL_TRUE,   \
@@ -273,7 +273,7 @@ bool CNN::readModelFile(const char *name) {
   fflush(fp);
   fclose(fp);
 
-#ifdef TARGET_GPU
+#ifdef FORWARD_GPU
   cl_int status;
 #define ENQUE_BUFFER(NAME, LEN)                                                \
   status = clEnqueueWriteBuffer(this->cmdQueue, this->device_##NAME, CL_TRUE,  \
