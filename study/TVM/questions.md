@@ -1,0 +1,1 @@
+给定一个computation DAG，对它做schedule会影响什么

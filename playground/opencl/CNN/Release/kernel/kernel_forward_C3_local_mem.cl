@@ -1,0 +1,81 @@
+__kernel void kernel_forward_C3(__global float *in, __global float *weight,
+                                __global float *bias, __global float *out,
+                                __global bool *tbl) {
+  __global float* data = in;
+  __global float* output = out;
+  float output_local[1];
+  __local float data_shared[216];
+  __local float weight_shared[150];
+  output_local[(0)] = 0.000000e+00f;
+  for (int ax0_ax1_fused_ax2_fused_outer_outer_outer = 0;
+       ax0_ax1_fused_ax2_fused_outer_outer_outer < 54;
+       ++ax0_ax1_fused_ax2_fused_outer_outer_outer) {
+    data_shared[((((ax0_ax1_fused_ax2_fused_outer_outer_outer * 4) +
+                   (((int)get_local_id(1)) * 2)) +
+                  ((int)get_local_id(0))))] =
+        data[((((((((((ax0_ax1_fused_ax2_fused_outer_outer_outer * 4) +
+                      (((int)get_local_id(1)) * 2)) +
+                     ((int)get_local_id(0))) /
+                    36) *
+                   196) +
+                  (((int)get_group_id(1)) * 28)) +
+                 ((((((ax0_ax1_fused_ax2_fused_outer_outer_outer * 4) +
+                      (((int)get_local_id(1)) * 2)) +
+                     ((int)get_local_id(0))) %
+                    36) /
+                   6) *
+                  14)) +
+                (((int)get_group_id(0)) * 2)) +
+               ((((ax0_ax1_fused_ax2_fused_outer_outer_outer * 4) +
+                  (((int)get_local_id(1)) * 2)) +
+                 ((int)get_local_id(0))) %
+                6)))];
+  }
+  for (int ax0_ax1_fused_ax2_fused_ax3_fused_outer_outer_outer = 0;
+       ax0_ax1_fused_ax2_fused_ax3_fused_outer_outer_outer < 38;
+       ++ax0_ax1_fused_ax2_fused_ax3_fused_outer_outer_outer) {
+    if ((((ax0_ax1_fused_ax2_fused_ax3_fused_outer_outer_outer * 4) +
+          (((int)get_local_id(1)) * 2)) +
+         ((int)get_local_id(0))) < 150) {
+      if (((ax0_ax1_fused_ax2_fused_ax3_fused_outer_outer_outer * 2) +
+           ((int)get_local_id(1))) < 75) {
+        weight_shared[(
+            (((ax0_ax1_fused_ax2_fused_ax3_fused_outer_outer_outer * 4) +
+              (((int)get_local_id(1)) * 2)) +
+             ((int)get_local_id(0))))] =
+            weight[(
+                ((((((int)get_group_id(2)) * 150) +
+                   (ax0_ax1_fused_ax2_fused_ax3_fused_outer_outer_outer * 4)) +
+                  (((int)get_local_id(1)) * 2)) +
+                 ((int)get_local_id(0))))];
+      }
+    }
+  }
+  barrier(CLK_LOCAL_MEM_FENCE);
+  for (int rc_outer_inner = 0; rc_outer_inner < 2; ++rc_outer_inner) {
+    for (int rr_outer_inner = 0; rr_outer_inner < 5; ++rr_outer_inner) {
+      for (int rc_inner = 0; rc_inner < 3; ++rc_inner) {
+        for (int rs_inner = 0; rs_inner < 5; ++rs_inner) {
+          
+          if (!tbl[(rc_outer_inner*3 + rc_inner) * 16 + (((int)get_group_id(2)))])
+            continue;
+          output_local[(0)] =
+              (output_local[(0)] +
+               ((data_shared[(((((((rc_outer_inner * 108) + (rc_inner * 36)) +
+                                  (((int)get_local_id(1)) * 6)) +
+                                 (rr_outer_inner * 6)) +
+                                ((int)get_local_id(0))) +
+                               rs_inner))] *
+                 weight_shared[(((((rc_outer_inner * 75) + (rc_inner * 25)) +
+                                  (rr_outer_inner * 5)) +
+                                 rs_inner))]) +
+                (0 * 6.666667e-03f)));
+        }
+      }
+    }
+  }
+  output[((((((((int)get_group_id(2)) * 100) + (((int)get_group_id(1)) * 20)) +
+             (((int)get_local_id(1)) * 10)) +
+            (((int)get_group_id(0)) * 2)) +
+           ((int)get_local_id(0))))] = tanh(output_local[(0)] + bias[(((int)get_group_id(2)))]);
+}

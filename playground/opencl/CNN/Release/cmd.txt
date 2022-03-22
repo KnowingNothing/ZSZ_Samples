@@ -1,0 +1,1 @@
+g++ -O3 -std=c++11 -DTEST_PREDICT -o OpenCL_Predict_CNN ../src/*.cpp -lopencv_core -lopencv_imgproc -lopencv_highgui

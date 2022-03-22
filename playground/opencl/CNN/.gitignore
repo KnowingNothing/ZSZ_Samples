@@ -1,0 +1,6 @@
+*.bmp
+*.o
+*.d
+OpenCL_CNN
+OpenCL_Predict_CNN
+*.log
