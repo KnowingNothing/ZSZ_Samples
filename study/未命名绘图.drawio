@@ -1,4 +1,4 @@
-<mxfile host="app.diagrams.net" modified="2023-11-02T23:18:09.082Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" etag="UNDJXXRkBePj-272qV4c" version="21.8.2" type="github">
+<mxfile host="app.diagrams.net" modified="2023-11-02T23:20:12.614Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36" etag="6xUYmGG2I-HE-kiBhb4B" version="21.8.2" type="github">
   <diagram name="第 1 页" id="voQeae59uFrAf403KE_O">
     <mxGraphModel dx="2074" dy="1071" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
@@ -17,6 +17,15 @@
         </mxCell>
         <mxCell id="Xp7Y2SF31okqukY9dUAG-5" value="Embedding:&amp;nbsp;&lt;br&gt;[VOCAB, 896]" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
           <mxGeometry x="70" y="150" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="Xp7Y2SF31okqukY9dUAG-6" value="retrieved: [batch, num_chunks, num_neighbor, chunk_size_with_continuation]&lt;br&gt;[2, 32, 2, 128]" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="220" y="80" width="290" height="40" as="geometry" />
+        </mxCell>
+        <mxCell id="Xp7Y2SF31okqukY9dUAG-7" value="!= pad_id" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="305" y="150" width="120" height="60" as="geometry" />
+        </mxCell>
+        <mxCell id="Xp7Y2SF31okqukY9dUAG-8" value="mask: [2, 32, 2, 128]" style="rounded=0;whiteSpace=wrap;html=1;" vertex="1" parent="1">
+          <mxGeometry x="305" y="240" width="120" height="40" as="geometry" />
         </mxCell>
       </root>
     </mxGraphModel>
