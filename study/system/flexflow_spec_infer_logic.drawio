@@ -1,6 +1,6 @@
-<mxfile host="app.diagrams.net" modified="2023-11-29T06:47:07.719Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" etag="0y8yxaTzBF7FmY1copL1" version="22.1.4" type="github">
+<mxfile host="app.diagrams.net" modified="2023-11-30T03:40:48.980Z" agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36" etag="A2Gh2CKURbii7SwGSpPA" version="22.1.4" type="github">
   <diagram name="第 1 页" id="qG1XOZHub_Ox06TlB61M">
-    <mxGraphModel dx="2021" dy="534" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
+    <mxGraphModel dx="2998" dy="971" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="827" pageHeight="1169" math="0" shadow="0">
       <root>
         <mxCell id="0" />
         <mxCell id="1" parent="0" />
@@ -258,7 +258,7 @@
             </Array>
           </mxGeometry>
         </mxCell>
-        <mxCell id="SF_eAXjuuhzjG8mS1avg-69" value="&lt;h1&gt;genereate_spec_infer&lt;/h1&gt;&lt;div&gt;1. register_new_request:&amp;nbsp;&lt;/div&gt;&lt;div&gt;2. prepare_next_batch_init&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;step 1. update requests, pending-&amp;gt;put into next batch&lt;br&gt;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; step 2. get new requests from queue to next batch&lt;/div&gt;&lt;div&gt;3.&amp;nbsp;&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
+        <mxCell id="SF_eAXjuuhzjG8mS1avg-69" value="&lt;h1&gt;genereate_spec_infer&lt;/h1&gt;&lt;div&gt;1. register_new_request:&amp;nbsp;&lt;/div&gt;&lt;div&gt;2. prepare_next_batch_init&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;step 1. update requests, pending-&amp;gt;put into next batch&lt;br&gt;&lt;/div&gt;&lt;div&gt;&amp;nbsp; &amp;nbsp; &amp;nbsp; &amp;nbsp; step 2. get new requests from queue to next batch&lt;/div&gt;&lt;div&gt;3. ssm inference&lt;/div&gt;&lt;div&gt;4. prepare_next_batch_beam&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;step 1. store_beam_metadata&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;span style=&quot;white-space: pre;&quot;&gt;&#x9;&lt;/span&gt;step 2. prepare next batch for existing requests&lt;br&gt;&lt;/div&gt;&lt;div&gt;&lt;br&gt;&lt;/div&gt;" style="text;html=1;strokeColor=none;fillColor=none;spacing=5;spacingTop=-20;whiteSpace=wrap;overflow=hidden;rounded=0;" vertex="1" parent="1">
           <mxGeometry x="610" y="629" width="410" height="120" as="geometry" />
         </mxCell>
         <mxCell id="SF_eAXjuuhzjG8mS1avg-70" value="register_new_request" style="rounded=1;whiteSpace=wrap;html=1;" vertex="1" parent="1">
